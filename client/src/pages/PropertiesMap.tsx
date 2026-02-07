@@ -116,22 +116,30 @@ export default function PropertiesMap() {
     }
 
     if (autocompleteServiceRef.current) {
-      autocompleteServiceRef.current.getPlacePredictions(
-        {
-          input: value,
-          types: ['(cities)'],
-          language: 'it',
-        },
-        (predictions, status) => {
-          if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
-            setSuggestions(predictions);
-            setShowSuggestions(true);
-          } else {
-            setSuggestions([]);
-            setShowSuggestions(false);
+      try {
+        autocompleteServiceRef.current.getPlacePredictions(
+          {
+            input: value,
+            types: ['(cities)'],
+            language: 'it',
+          },
+          (predictions, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+              setSuggestions(predictions);
+              setShowSuggestions(true);
+            } else {
+              console.warn("Places Autocomplete failed:", status);
+              if (status === google.maps.places.PlacesServiceStatus.REQUEST_DENIED) {
+                 toast.error("Errore API Google: Abilita 'Places API' nella Cloud Console");
+              }
+              setSuggestions([]);
+              setShowSuggestions(false);
+            }
           }
-        }
-      );
+        );
+      } catch (e) {
+        console.error("Autocomplete error:", e);
+      }
     }
   };
 
@@ -271,9 +279,9 @@ export default function PropertiesMap() {
       </nav>
 
       {/* Main Content */}
-      <div className="flex-1 flex">
+      <div className="flex-1 flex flex-col md:flex-row h-[calc(100vh-73px)]">
         {/* Properties List Sidebar */}
-        <div className="w-full md:w-2/5 lg:w-1/3 overflow-y-auto border-r bg-background">
+        <div className="w-full md:w-2/5 lg:w-1/3 h-1/2 md:h-full overflow-y-auto border-r bg-background order-2 md:order-1">
           <div className="p-6 space-y-4">
             {/* Search Bar with Autocomplete */}
             <div className="relative">
@@ -401,7 +409,7 @@ export default function PropertiesMap() {
         </div>
 
         {/* Map */}
-        <div className="flex-1 relative">
+        <div className="flex-1 relative h-1/2 md:h-full order-1 md:order-2">
           <MapView
             initialCenter={{ lat: 41.9028, lng: 12.4964 }} // Rome, Italy
             initialZoom={6}

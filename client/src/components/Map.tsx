@@ -4,6 +4,13 @@ import { cn } from "@/lib/utils";
 
 const libraries: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
 
+// Add global declaration for gm_authFailure
+declare global {
+  interface Window {
+    gm_authFailure?: () => void;
+  }
+}
+
 interface MapViewProps {
   className?: string;
   initialCenter?: google.maps.LatLngLiteral;
@@ -21,8 +28,24 @@ export function MapView({
   showUserLocation = true,
   onLocationFound,
 }: MapViewProps) {
+  const [authError, setAuthError] = useState(false);
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+
+  useEffect(() => {
+    // Setup global error handler for Google Maps auth failures
+    window.gm_authFailure = () => {
+      console.error("Google Maps Authentication Failure: Invalid API Key or billing issue.");
+      setAuthError(true);
+    };
+
+    return () => {
+      // Cleanup
+      window.gm_authFailure = undefined;
+    };
+  }, []);
+
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
+    googleMapsApiKey: apiKey,
     libraries: libraries,
   });
 
@@ -33,11 +56,16 @@ export function MapView({
   const hasCenteredOnUser = useRef(false);
 
   const onLoad = useCallback((mapInstance: google.maps.Map) => {
+    console.log("Google Maps loaded successfully");
     setMap(mapInstance);
     if (onMapReady) {
       onMapReady(mapInstance);
     }
   }, [onMapReady]);
+
+  const onUnmount = useCallback(() => {
+    setMap(null);
+  }, []);
 
   useEffect(() => {
     if (showUserLocation && navigator.geolocation) {
@@ -72,14 +100,50 @@ export function MapView({
     }
   }, [map, showUserLocation, onLocationFound]);
 
+  if (!apiKey) {
+    return (
+      <div className={cn("w-full h-[500px] flex items-center justify-center bg-gray-100 border border-red-200 text-red-600 p-4", className)}>
+        <div>
+          <h3 className="font-bold">Configuration Error</h3>
+          <p>Google Maps API Key is missing in environment variables.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (loadError) {
-    return <div className="p-4 text-red-500">Error loading Google Maps</div>;
+    console.error("Google Maps Load Error:", loadError);
+    return (
+      <div className={cn("w-full h-[500px] flex items-center justify-center bg-red-50 border border-red-200 text-red-600 p-4", className)}>
+        <div>
+          <h3 className="font-bold">Error loading Google Maps</h3>
+          <p className="text-sm mt-1">{loadError.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (authError) {
+    return (
+      <div className={cn("w-full h-[500px] flex items-center justify-center bg-red-50 border border-red-200 text-red-600 p-4", className)}>
+        <div>
+          <h3 className="font-bold">Authentication Error</h3>
+          <p className="text-sm mt-1">
+            Google Maps API key is invalid or unauthorized. 
+            Check browser console for details.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (!isLoaded) {
     return (
       <div className={cn("w-full h-[500px] flex items-center justify-center bg-gray-100", className)}>
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        <div className="flex flex-col items-center gap-2">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          <p className="text-sm text-gray-500">Loading Maps...</p>
+        </div>
       </div>
     );
   }
@@ -91,6 +155,7 @@ export function MapView({
         center={userPos || initialCenter}
         zoom={initialZoom}
         onLoad={onLoad}
+        onUnmount={onUnmount}
         options={{
           mapId: "DEMO_MAP_ID", // Required for AdvancedMarkerElement
           mapTypeControl: true,
@@ -98,6 +163,7 @@ export function MapView({
           streetViewControl: true,
           zoomControl: true,
         }}
+
       >
         {userPos && showUserLocation && (
           <MarkerF
