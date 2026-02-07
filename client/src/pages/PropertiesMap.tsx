@@ -163,6 +163,13 @@ export default function PropertiesMap() {
             mapRef.current.setCenter(coords);
             mapRef.current.setZoom(11);
           }
+        } else {
+          console.error("Geocoding failed:", status);
+          if (status === 'REQUEST_DENIED') {
+            toast.error("Errore Geocoding: Abilita 'Geocoding API' nella Google Cloud Console");
+          } else {
+            toast.error(`Errore ricerca posizione: ${status}`);
+          }
         }
       });
     }
