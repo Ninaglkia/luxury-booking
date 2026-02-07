@@ -30,7 +30,7 @@ export function MapView({
 }: MapViewProps) {
   const [authError, setAuthError] = useState(false);
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-  const mapId = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
+  const mapId = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID?.trim();
 
   useEffect(() => {
     // Setup global error handler for Google Maps auth failures
@@ -158,7 +158,7 @@ export function MapView({
         onLoad={onLoad}
         onUnmount={onUnmount}
         options={{
-          mapId, // Required for AdvancedMarkerElement
+          ...(mapId ? { mapId } : {}),
           mapTypeControl: true,
           fullscreenControl: true,
           streetViewControl: true,
