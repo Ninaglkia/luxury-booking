@@ -1,40 +1,59 @@
-import express from "express";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { appRouter } from "../server/routers";
-import { createContext } from "../server/_core/context";
-import { oauthRouter } from "../server/_core/oauth";
+import express, { type Express } from "express";
+import type { Request, Response } from "express";
 
-const app = express();
+let appPromise: Promise<Express> | null = null;
 
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+async function createApiApp(): Promise<Express> {
+  const [{ createExpressMiddleware }, { appRouter }, { createContext }, { oauthRouter }] =
+    await Promise.all([
+      import("@trpc/server/adapters/express"),
+      import("../server/routers"),
+      import("../server/_core/context"),
+      import("../server/_core/oauth"),
+    ]);
 
-// Mount oauthRouter at root because Vercel rewrites might strip /api prefix
-// or pass relative path.
-// If req.url is /api/dev/login, and we mount at /, it expects /api/dev/login
-// If req.url is /dev/login, and we mount at /, it expects /dev/login
-// Our oauthRouter expects /dev/login.
-// To cover all bases on Vercel:
-app.use("/api", oauthRouter); // For when full path is preserved
-app.use("/", oauthRouter);    // For when prefix is stripped
+  const app = express();
 
-app.use(
-  "/api/trpc",
-  createExpressMiddleware({
-    router: appRouter,
-    createContext,
-  })
-);
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// Some Vercel function adapters forward catch-all API routes without `/api` prefix.
-app.use(
-  "/trpc",
-  createExpressMiddleware({
-    router: appRouter,
-    createContext,
-  })
-);
+  app.use("/api", oauthRouter);
+  app.use("/", oauthRouter);
 
-export default function handler(req: any, res: any) {
-  return app(req, res);
+  app.use(
+    "/api/trpc",
+    createExpressMiddleware({
+      router: appRouter,
+      createContext,
+    })
+  );
+
+  app.use(
+    "/trpc",
+    createExpressMiddleware({
+      router: appRouter,
+      createContext,
+    })
+  );
+
+  return app;
+}
+
+async function getApiApp(): Promise<Express> {
+  if (!appPromise) {
+    appPromise = createApiApp();
+  }
+
+  return appPromise;
+}
+
+export default async function handler(req: Request, res: Response) {
+  try {
+    const app = await getApiApp();
+    return app(req, res);
+  } catch (error) {
+    console.error("[API] Bootstrap failed", error);
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ error: "API bootstrap failed", message });
+  }
 }
