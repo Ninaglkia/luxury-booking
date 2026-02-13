@@ -17,6 +17,28 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 
+const quickFilters = [
+  { label: "Piscina privata", href: "/properties" },
+  { label: "Vista mare", href: "/properties-map" },
+  { label: "Ideali per famiglie", href: "/properties" },
+  { label: "Weekend romantico", href: "/properties" },
+];
+
+const bookingSteps = [
+  {
+    title: "Scegli la destinazione",
+    description: "Naviga per mappa o per collezione e trova la villa perfetta in pochi clic.",
+  },
+  {
+    title: "Confronta i servizi",
+    description: "Valuta camere, ospiti, posizione e comfort premium in una schermata chiara.",
+  },
+  {
+    title: "Prenota in sicurezza",
+    description: "Conferma rapida, comunicazione diretta e assistenza dedicata in ogni fase.",
+  },
+];
+
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
   const { data: properties, isLoading } = trpc.properties.list.useQuery();
@@ -85,7 +107,7 @@ export default function Home() {
         </div>
 
         <div className="container relative z-10">
-          <div className="max-w-4xl mx-auto text-center animate-fade-in">
+          <div className="max-w-5xl mx-auto text-center animate-fade-in">
             <Badge className="mb-6 px-6 py-2 text-sm font-medium" variant="secondary">
               Ville di Lusso Esclusive
             </Badge>
@@ -99,8 +121,44 @@ export default function Home() {
               e servizi di lusso incomparabili
             </p>
 
+            <Card className="max-w-4xl mx-auto mb-10 border-2 shadow-luxury-lg">
+              <CardContent className="p-4 sm:p-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div className="md:col-span-2 flex items-center rounded-xl border bg-background px-4 py-3 text-left">
+                    <Search className="w-4 h-4 text-muted-foreground mr-3" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Destinazione</p>
+                      <p className="font-medium">Dove vuoi andare?</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center rounded-xl border bg-background px-4 py-3 text-left">
+                    <Users className="w-4 h-4 text-muted-foreground mr-3" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Ospiti</p>
+                      <p className="font-medium">2+ persone</p>
+                    </div>
+                  </div>
+                  <Link href="/properties" className="w-full">
+                    <Button className="w-full h-full min-h-14 text-base">
+                      Cerca ville
+                      <ArrowRight className="ml-2 w-4 h-4" />
+                    </Button>
+                  </Link>
+                </div>
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  {quickFilters.map((filter) => (
+                    <Link key={filter.label} href={filter.href}>
+                      <Badge variant="outline" className="cursor-pointer hover:border-primary hover:text-primary transition-colors px-3 py-1">
+                        {filter.label}
+                      </Badge>
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <Link href="/properties">
                 <Button size="lg" className="text-lg px-8 py-6">
                   Esplora le Ville
@@ -121,6 +179,21 @@ export default function Home() {
                   </Button>
                 </a>
               )}
+            </div>
+
+            <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto text-left">
+              <div className="rounded-xl border bg-background/80 p-4">
+                <p className="text-2xl font-bold text-primary">500+</p>
+                <p className="text-sm text-muted-foreground">Ville premium selezionate</p>
+              </div>
+              <div className="rounded-xl border bg-background/80 p-4">
+                <p className="text-2xl font-bold text-primary">24/7</p>
+                <p className="text-sm text-muted-foreground">Supporto concierge dedicato</p>
+              </div>
+              <div className="rounded-xl border bg-background/80 p-4">
+                <p className="text-2xl font-bold text-primary">4.9/5</p>
+                <p className="text-sm text-muted-foreground">Valutazione media degli ospiti</p>
+              </div>
             </div>
           </div>
         </div>
@@ -165,6 +238,33 @@ export default function Home() {
                 </p>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="py-20 bg-background">
+        <div className="container">
+          <div className="text-center mb-12">
+            <Badge variant="secondary" className="mb-4">Come funziona</Badge>
+            <h2 className="text-4xl md:text-5xl font-serif font-bold mb-4">Prenotare è semplice</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Un percorso chiaro per aiutarti a scegliere e prenotare la villa ideale senza stress.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {bookingSteps.map((step, index) => (
+              <Card key={step.title} className="border-2">
+                <CardContent className="p-6">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center mb-4">
+                    {index + 1}
+                  </div>
+                  <h3 className="text-xl font-serif font-semibold mb-3">{step.title}</h3>
+                  <p className="text-muted-foreground">{step.description}</p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
