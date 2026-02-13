@@ -1,7 +1,7 @@
 import { Server as SocketIOServer } from "socket.io";
 import type { Server as HTTPServer } from "http";
-import { sdk } from "./sdk";
-import { getUserByOpenId } from "../db";
+import { sdk } from "./sdk.js";
+import { getUserByOpenId } from "../db.js";
 
 export function setupSocketIO(httpServer: HTTPServer) {
   const io = new SocketIOServer(httpServer, {

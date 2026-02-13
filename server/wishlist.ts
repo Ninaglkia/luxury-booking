@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { protectedProcedure, router } from "./_core/trpc";
-import { getDb } from "./db";
-import { wishlist, properties, propertyImages } from "../drizzle/schema";
+import { protectedProcedure, router } from "./_core/trpc.js";
+import { getDb } from "./db.js";
+import { wishlist, properties, propertyImages } from "../drizzle/schema.js";
 import { and, eq } from "drizzle-orm";
 
 export const wishlistRouter = router({
