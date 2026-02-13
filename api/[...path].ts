@@ -26,6 +26,15 @@ app.use(
   })
 );
 
+// Some Vercel function adapters forward catch-all API routes without `/api` prefix.
+app.use(
+  "/trpc",
+  createExpressMiddleware({
+    router: appRouter,
+    createContext,
+  })
+);
+
 export default function handler(req: any, res: any) {
   return app(req, res);
 }

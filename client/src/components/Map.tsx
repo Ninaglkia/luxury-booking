@@ -2,7 +2,7 @@ import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
 import { useEffect, useState, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
 
-const libraries: ("places" | "geometry" | "marker")[] = ["places", "geometry", "marker"];
+const libraries: ("places" | "geometry")[] = ["places", "geometry"];
 
 // Add global declaration for gm_authFailure
 declare global {
@@ -29,6 +29,7 @@ export function MapView({
   onLocationFound,
 }: MapViewProps) {
   const [authError, setAuthError] = useState(false);
+  const [loadTimeoutReached, setLoadTimeoutReached] = useState(false);
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
   const mapId = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID?.trim();
 
@@ -49,6 +50,21 @@ export function MapView({
     googleMapsApiKey: apiKey,
     libraries: libraries,
   });
+
+  useEffect(() => {
+    if (isLoaded || loadError) {
+      setLoadTimeoutReached(false);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setLoadTimeoutReached(true);
+    }, 12000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isLoaded, loadError]);
 
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [userPos, setUserPos] = useState<google.maps.LatLngLiteral | null>(null);
@@ -103,7 +119,7 @@ export function MapView({
 
   if (!apiKey) {
     return (
-      <div className={cn("w-full h-[500px] flex items-center justify-center bg-gray-100 border border-red-200 text-red-600 p-4", className)}>
+      <div className={cn("w-full h-full min-h-[420px] flex items-center justify-center bg-gray-100 border border-red-200 text-red-600 p-4", className)}>
         <div>
           <h3 className="font-bold">Configuration Error</h3>
           <p>Google Maps API Key is missing in environment variables.</p>
@@ -115,7 +131,7 @@ export function MapView({
   if (loadError) {
     console.error("Google Maps Load Error:", loadError);
     return (
-      <div className={cn("w-full h-[500px] flex items-center justify-center bg-red-50 border border-red-200 text-red-600 p-4", className)}>
+      <div className={cn("w-full h-full min-h-[420px] flex items-center justify-center bg-red-50 border border-red-200 text-red-600 p-4", className)}>
         <div>
           <h3 className="font-bold">Error loading Google Maps</h3>
           <p className="text-sm mt-1">{loadError.message}</p>
@@ -126,7 +142,7 @@ export function MapView({
 
   if (authError) {
     return (
-      <div className={cn("w-full h-[500px] flex items-center justify-center bg-red-50 border border-red-200 text-red-600 p-4", className)}>
+      <div className={cn("w-full h-full min-h-[420px] flex items-center justify-center bg-red-50 border border-red-200 text-red-600 p-4", className)}>
         <div>
           <h3 className="font-bold">Authentication Error</h3>
           <p className="text-sm mt-1">
@@ -138,9 +154,22 @@ export function MapView({
     );
   }
 
+  if (loadTimeoutReached && !isLoaded) {
+    return (
+      <div className={cn("w-full h-full min-h-[420px] flex items-center justify-center bg-red-50 border border-red-200 text-red-600 p-4", className)}>
+        <div>
+          <h3 className="font-bold">Google Maps timeout</h3>
+          <p className="text-sm mt-1">
+            La mappa non risponde. Verifica API key, referrer del dominio Vercel e API abilitate.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (!isLoaded) {
     return (
-      <div className={cn("w-full h-[500px] flex items-center justify-center bg-gray-100", className)}>
+      <div className={cn("w-full h-full min-h-[420px] flex items-center justify-center bg-gray-100", className)}>
         <div className="flex flex-col items-center gap-2">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
           <p className="text-sm text-gray-500">Loading Maps...</p>
@@ -150,7 +179,7 @@ export function MapView({
   }
 
   return (
-    <div className={cn("w-full h-[500px]", className)}>
+    <div className={cn("w-full h-full min-h-[420px]", className)}>
       <GoogleMap
         mapContainerStyle={{ width: '100%', height: '100%' }}
         center={userPos || initialCenter}
