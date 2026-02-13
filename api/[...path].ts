@@ -1,33 +1,59 @@
-import express from "express";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { appRouter } from "../server/routers.js";
-import { createContext } from "../server/_core/context.js";
-import { oauthRouter } from "../server/_core/oauth.js";
+import express, { type Express } from "express";
+import type { Request, Response } from "express";
 
-const app = express();
+let appPromise: Promise<Express> | null = null;
 
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+async function createApiApp(): Promise<Express> {
+  const [{ createExpressMiddleware }, { appRouter }, { createContext }, { oauthRouter }] =
+    await Promise.all([
+      import("@trpc/server/adapters/express"),
+      import("../server/routers.js"),
+      import("../server/_core/context.js"),
+      import("../server/_core/oauth.js"),
+    ]);
 
-app.use("/api", oauthRouter);
-app.use("/", oauthRouter);
+  const app = express();
 
-app.use(
-  "/api/trpc",
-  createExpressMiddleware({
-    router: appRouter,
-    createContext,
-  })
-);
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-app.use(
-  "/trpc",
-  createExpressMiddleware({
-    router: appRouter,
-    createContext,
-  })
-);
+  app.use("/api", oauthRouter);
+  app.use("/", oauthRouter);
 
-export default function handler(req: any, res: any) {
-  return app(req, res);
+  app.use(
+    "/api/trpc",
+    createExpressMiddleware({
+      router: appRouter,
+      createContext,
+    })
+  );
+
+  app.use(
+    "/trpc",
+    createExpressMiddleware({
+      router: appRouter,
+      createContext,
+    })
+  );
+
+  return app;
+}
+
+async function getApiApp(): Promise<Express> {
+  if (!appPromise) {
+    appPromise = createApiApp();
+  }
+
+  return appPromise;
+}
+
+export default async function handler(req: Request, res: Response) {
+  try {
+    const app = await getApiApp();
+    return app(req, res);
+  } catch (error) {
+    console.error("[API] Bootstrap failed", error);
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ error: "API bootstrap failed", message });
+  }
 }
