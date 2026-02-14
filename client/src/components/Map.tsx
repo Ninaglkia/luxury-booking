@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 
 const libraries: ("places" | "geometry")[] = ["places", "geometry"];
 
-// Add global declaration for gm_authFailure
 declare global {
   interface Window {
     gm_authFailure?: () => void;
@@ -18,6 +17,7 @@ interface MapViewProps {
   onMapReady?: (map: google.maps.Map) => void;
   showUserLocation?: boolean;
   onLocationFound?: (lat: number, lng: number) => void;
+  onLoadFailure?: (reason: "missing_api_key" | "load_error" | "auth_error" | "timeout") => void;
 }
 
 export function MapView({
@@ -27,6 +27,7 @@ export function MapView({
   onMapReady,
   showUserLocation = true,
   onLocationFound,
+  onLoadFailure,
 }: MapViewProps) {
   const [authError, setAuthError] = useState(false);
   const [loadTimeoutReached, setLoadTimeoutReached] = useState(false);
@@ -35,22 +36,38 @@ export function MapView({
   const mapId = rawMapId && rawMapId !== "DEMO_MAP_ID" ? rawMapId : undefined;
 
   useEffect(() => {
-    // Setup global error handler for Google Maps auth failures
     window.gm_authFailure = () => {
       console.error("Google Maps Authentication Failure: Invalid API Key or billing issue.");
       setAuthError(true);
     };
 
     return () => {
-      // Cleanup
       window.gm_authFailure = undefined;
     };
   }, []);
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: apiKey,
-    libraries: libraries,
+    libraries,
   });
+
+  useEffect(() => {
+    if (!apiKey) onLoadFailure?.("missing_api_key");
+  }, [apiKey, onLoadFailure]);
+
+  useEffect(() => {
+    if (loadError) onLoadFailure?.("load_error");
+  }, [loadError, onLoadFailure]);
+
+  useEffect(() => {
+    if (authError) onLoadFailure?.("auth_error");
+  }, [authError, onLoadFailure]);
+
+  useEffect(() => {
+    if (loadTimeoutReached && !isLoaded) {
+      onLoadFailure?.("timeout");
+    }
+  }, [loadTimeoutReached, isLoaded, onLoadFailure]);
 
   useEffect(() => {
     if (isLoaded || loadError) {
@@ -69,53 +86,49 @@ export function MapView({
 
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [userPos, setUserPos] = useState<google.maps.LatLngLiteral | null>(null);
-  
-  // Use a ref to track if we've already centered on user to avoid re-centering on every render
   const hasCenteredOnUser = useRef(false);
 
-  const onLoad = useCallback((mapInstance: google.maps.Map) => {
-    console.log("Google Maps loaded successfully");
-    setMap(mapInstance);
-    if (onMapReady) {
-      onMapReady(mapInstance);
-    }
-  }, [onMapReady]);
+  const onLoad = useCallback(
+    (mapInstance: google.maps.Map) => {
+      setMap(mapInstance);
+      onMapReady?.(mapInstance);
+    },
+    [onMapReady]
+  );
 
   const onUnmount = useCallback(() => {
     setMap(null);
   }, []);
 
   useEffect(() => {
-    if (showUserLocation && navigator.geolocation) {
-      const watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          const pos = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setUserPos(pos);
-          if (onLocationFound) {
-            onLocationFound(pos.lat, pos.lng);
-          }
-          
-          // Center map on user location only once when first found, or if map just loaded
-          if (map && !hasCenteredOnUser.current) {
-            map.setCenter(pos);
-            hasCenteredOnUser.current = true;
-          }
-        },
-        (error) => {
-          console.warn("Geolocation permission denied or error:", error);
-        },
-        {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 0
+    if (!showUserLocation || !navigator.geolocation) return;
+
+    const watchId = navigator.geolocation.watchPosition(
+      position => {
+        const pos = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+
+        setUserPos(pos);
+        onLocationFound?.(pos.lat, pos.lng);
+
+        if (map && !hasCenteredOnUser.current) {
+          map.setCenter(pos);
+          hasCenteredOnUser.current = true;
         }
-      );
-      
-      return () => navigator.geolocation.clearWatch(watchId);
-    }
+      },
+      error => {
+        console.warn("Geolocation permission denied or error:", error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0,
+      }
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
   }, [map, showUserLocation, onLocationFound]);
 
   if (!apiKey) {
@@ -146,10 +159,7 @@ export function MapView({
       <div className={cn("w-full h-full min-h-[420px] flex items-center justify-center bg-red-50 border border-red-200 text-red-600 p-4", className)}>
         <div>
           <h3 className="font-bold">Authentication Error</h3>
-          <p className="text-sm mt-1">
-            Google Maps API key is invalid or unauthorized. 
-            Check browser console for details.
-          </p>
+          <p className="text-sm mt-1">Google Maps API key is invalid or unauthorized.</p>
         </div>
       </div>
     );
@@ -160,9 +170,7 @@ export function MapView({
       <div className={cn("w-full h-full min-h-[420px] flex items-center justify-center bg-red-50 border border-red-200 text-red-600 p-4", className)}>
         <div>
           <h3 className="font-bold">Google Maps timeout</h3>
-          <p className="text-sm mt-1">
-            La mappa non risponde. Verifica API key, referrer del dominio Vercel e API abilitate.
-          </p>
+          <p className="text-sm mt-1">La mappa non risponde. Verifica API key e restrizioni dominio.</p>
         </div>
       </div>
     );
@@ -182,7 +190,7 @@ export function MapView({
   return (
     <div className={cn("w-full h-full min-h-[420px]", className)}>
       <GoogleMap
-        mapContainerStyle={{ width: '100%', height: '100%' }}
+        mapContainerStyle={{ width: "100%", height: "100%" }}
         center={userPos || initialCenter}
         zoom={initialZoom}
         onLoad={onLoad}
@@ -194,7 +202,6 @@ export function MapView({
           streetViewControl: true,
           zoomControl: true,
         }}
-
       >
         {userPos && showUserLocation && (
           <MarkerF

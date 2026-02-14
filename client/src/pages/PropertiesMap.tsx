@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { MapView } from "@/components/Map";
+import { MapLeaflet } from "@/components/MapLeaflet";
 import {
   Sparkles,
   MapPin,
@@ -49,6 +50,7 @@ export default function PropertiesMap() {
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [suggestions, setSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [useLeafletFallback, setUseLeafletFallback] = useState(false);
 
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<Map<number, google.maps.Marker>>(new Map());
@@ -68,6 +70,17 @@ export default function PropertiesMap() {
     console.error("Failed to load properties for map:", error);
     toast.error("Errore caricamento ville. Riprova tra poco.");
   }, [error]);
+
+  const handleGoogleMapFailure = useCallback(
+    (reason: "missing_api_key" | "load_error" | "auth_error" | "timeout") => {
+      if (useLeafletFallback) return;
+
+      console.warn("Google Maps unavailable, switching to Leaflet fallback:", reason);
+      setUseLeafletFallback(true);
+      toast.warning("Google Maps non disponibile: attivata mappa alternativa.");
+    },
+    [useLeafletFallback]
+  );
 
   const calculateDistance = useCallback(
     (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -118,6 +131,26 @@ export default function PropertiesMap() {
         return a.distance - b.distance;
       });
   }, [properties, searchTerm, searchLocation, userLocation, calculateDistance]);
+
+  const mapCenter = useMemo(
+    () => searchLocation || userLocation || { lat: 41.9028, lng: 12.4964 },
+    [searchLocation, userLocation]
+  );
+
+  const mapZoom = searchLocation || userLocation ? 11 : 6;
+
+  const leafletProperties = useMemo(
+    () =>
+      filteredProperties.map(property => ({
+        id: property.id,
+        title: property.title,
+        latitude: toNumber(property.latitude)?.toString() ?? null,
+        longitude: toNumber(property.longitude)?.toString() ?? null,
+        pricePerNight: property.pricePerNight,
+        images: property.images ?? [],
+      })),
+    [filteredProperties]
+  );
 
   const clearMarkers = useCallback(() => {
     markersRef.current.forEach(marker => {
@@ -242,25 +275,32 @@ export default function PropertiesMap() {
     });
   }, []);
 
-  const handleMapReady = useCallback((map: google.maps.Map) => {
-    mapRef.current = map;
+  const handleMapReady = useCallback(
+    (map: google.maps.Map) => {
+      if (useLeafletFallback) return;
 
-    try {
-      autocompleteServiceRef.current = new google.maps.places.AutocompleteService();
-    } catch (err) {
-      console.warn("Places AutocompleteService not available", err);
-      autocompleteServiceRef.current = null;
-    }
+      mapRef.current = map;
 
-    try {
-      geocoderRef.current = new google.maps.Geocoder();
-    } catch (err) {
-      console.warn("Geocoder not available", err);
-      geocoderRef.current = null;
-    }
-  }, []);
+      try {
+        autocompleteServiceRef.current = new google.maps.places.AutocompleteService();
+      } catch (err) {
+        console.warn("Places AutocompleteService not available", err);
+        autocompleteServiceRef.current = null;
+      }
+
+      try {
+        geocoderRef.current = new google.maps.Geocoder();
+      } catch (err) {
+        console.warn("Geocoder not available", err);
+        geocoderRef.current = null;
+      }
+    },
+    [useLeafletFallback]
+  );
 
   useEffect(() => {
+    if (useLeafletFallback) return;
+
     const map = mapRef.current;
     if (!map || !window.google?.maps) return;
 
@@ -313,9 +353,10 @@ export default function PropertiesMap() {
         map.setZoom(14);
       }
     });
-  }, [filteredProperties, clearMarkers, createMarkerAppearance, setLocationRoute]);
+  }, [filteredProperties, clearMarkers, createMarkerAppearance, setLocationRoute, useLeafletFallback]);
 
   useEffect(() => {
+    if (useLeafletFallback) return;
     if (!window.google?.maps || filteredProperties.length === 0) return;
 
     const priceByPropertyId = new Map(
@@ -333,7 +374,7 @@ export default function PropertiesMap() {
       marker.setLabel(appearance.label);
       marker.setZIndex(appearance.zIndex);
     });
-  }, [hoveredPropertyId, filteredProperties, createMarkerAppearance]);
+  }, [hoveredPropertyId, filteredProperties, createMarkerAppearance, useLeafletFallback]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -484,13 +525,27 @@ export default function PropertiesMap() {
         </div>
 
         <div className="flex-1 relative h-[55vh] lg:h-full min-h-[420px] order-1 lg:order-2">
-          <MapView
-            initialCenter={{ lat: 41.9028, lng: 12.4964 }}
-            initialZoom={6}
-            onMapReady={handleMapReady}
-            onLocationFound={handleUserLocationFound}
-            className="w-full h-full min-h-[420px]"
-          />
+          {useLeafletFallback ? (
+            <MapLeaflet
+              className="w-full h-full min-h-[420px]"
+              properties={leafletProperties}
+              userLocation={userLocation}
+              center={mapCenter}
+              zoom={mapZoom}
+              hoveredPropertyId={hoveredPropertyId}
+              onMarkerClick={id => setLocationRoute(`/properties/${id}`)}
+              onMarkerHover={id => setHoveredPropertyId(id)}
+            />
+          ) : (
+            <MapView
+              initialCenter={{ lat: 41.9028, lng: 12.4964 }}
+              initialZoom={6}
+              onMapReady={handleMapReady}
+              onLocationFound={handleUserLocationFound}
+              onLoadFailure={handleGoogleMapFailure}
+              className="w-full h-full min-h-[420px]"
+            />
+          )}
         </div>
       </div>
     </div>

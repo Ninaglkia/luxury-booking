@@ -42,11 +42,47 @@ const trpcClient = trpc.createClient({
     httpBatchLink({
       url: "/api/trpc",
       transformer: superjson,
-      fetch(input, init) {
-        return globalThis.fetch(input, {
-          ...(init ?? {}),
-          credentials: "include",
-        });
+      async fetch(input, init) {
+        const runRequest = (target: RequestInfo | URL) =>
+          globalThis.fetch(target, {
+            ...(init ?? {}),
+            credentials: "include",
+          });
+
+        const getUrl = (target: RequestInfo | URL) =>
+          typeof target === "string"
+            ? target
+            : target instanceof URL
+              ? target.toString()
+              : target instanceof Request
+                ? target.url
+                : "";
+
+        const getFallbackTarget = (target: RequestInfo | URL): RequestInfo | URL => {
+          if (typeof target === "string") {
+            return target.replace("/api/trpc", "/trpc");
+          }
+
+          if (target instanceof URL) {
+            const cloned = new URL(target.toString());
+            cloned.pathname = cloned.pathname.replace("/api/trpc", "/trpc");
+            return cloned;
+          }
+
+          return target;
+        };
+
+        let response = await runRequest(input);
+        const contentType = response.headers.get("content-type") ?? "";
+        const shouldRetryOnFallback =
+          getUrl(input).includes("/api/trpc") &&
+          (!response.ok || contentType.includes("text/html"));
+
+        if (shouldRetryOnFallback) {
+          response = await runRequest(getFallbackTarget(input));
+        }
+
+        return response;
       },
     }),
   ],

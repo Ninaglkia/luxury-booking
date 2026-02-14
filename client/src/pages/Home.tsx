@@ -2,240 +2,233 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { 
-  Search, 
-  MapPin, 
-  Users, 
-  Star, 
-  Waves, 
-  Mountain, 
-  Sparkles,
+import {
   ArrowRight,
-  Home as HomeIcon
+  BedDouble,
+  CalendarDays,
+  MapPin,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Users,
 } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
-  const { data: properties, isLoading } = trpc.properties.list.useQuery();
+  const { data: properties, isLoading } = trpc.properties.list.useQuery(undefined, {
+    retry: 1,
+  });
+
+  const featured = properties?.slice(0, 6) ?? [];
 
   return (
-    <div className="min-h-screen">
-      {/* Navigation */}
-      <nav className="glass-effect fixed top-0 left-0 right-0 z-50 border-b">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-[#f2f6fb]">
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-slate-200/70 bg-white/95 backdrop-blur-md">
+        <div className="container py-4">
+          <div className="flex items-center justify-between gap-4">
             <Link href="/">
               <div className="flex items-center gap-2 cursor-pointer">
-                <Sparkles className="w-8 h-8 text-primary" />
-                <span className="text-2xl font-serif font-bold text-gradient-gold">
-                  Luxury Booking
-                </span>
+                <div className="w-9 h-9 rounded-xl bg-[#003b95] text-white flex items-center justify-center">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <span className="text-xl md:text-2xl font-serif font-bold text-[#0f172a]">Luxury Booking</span>
               </div>
             </Link>
 
-            <div className="flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-2">
+              <Link href="/properties">
+                <Button variant="ghost" className="text-slate-700 hover:text-[#003b95]">
+                  Esplora
+                </Button>
+              </Link>
+              <Link href="/properties-map">
+                <Button variant="ghost" className="text-slate-700 hover:text-[#003b95]">
+                  Mappa
+                </Button>
+              </Link>
               {isAuthenticated ? (
-                <>
-                  <Link href="/properties">
-                    <Button variant="ghost">Esplora Ville</Button>
-                  </Link>
-                  {user?.role === 'host' || user?.role === 'admin' ? (
-                    <Link href="/host/dashboard">
-                      <Button variant="ghost">Dashboard Host</Button>
-                    </Link>
-                  ) : (
-                    <Link href="/become-host">
-                      <Button variant="ghost">Diventa Host</Button>
-                    </Link>
-                  )}
-                  {user?.role === 'admin' && (
-                    <Link href="/admin">
-                      <Button variant="ghost">Admin</Button>
-                    </Link>
-                  )}
-                  <Link href="/profile">
-                    <Button variant="outline">
-                      {user?.name || 'Profilo'}
-                    </Button>
-                  </Link>
-                </>
+                <Link href="/profile">
+                  <Button variant="outline" className="border-slate-300">
+                    {user?.name || "Profilo"}
+                  </Button>
+                </Link>
               ) : (
-                <>
-                  <Link href="/properties">
-                    <Button variant="ghost">Esplora Ville</Button>
-                  </Link>
-                  <a href={getLoginUrl()}>
-                    <Button className="shadow-luxury">Accedi</Button>
-                  </a>
-                </>
+                <a href={getLoginUrl()}>
+                  <Button className="bg-[#006ce4] hover:bg-[#0057b8] text-white">Accedi</Button>
+                </a>
               )}
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-20 luxury-gradient overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-primary rounded-full blur-3xl"></div>
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-secondary rounded-full blur-3xl"></div>
-        </div>
-
-        <div className="container relative z-10">
-          <div className="max-w-4xl mx-auto text-center animate-fade-in">
-            <Badge className="mb-6 px-6 py-2 text-sm font-medium" variant="secondary">
-              Ville di Lusso Esclusive
+      <section className="pt-28 pb-14 bg-gradient-to-b from-[#003b95] via-[#0057b8] to-[#006ce4] text-white">
+        <div className="container">
+          <div className="max-w-4xl">
+            <Badge className="mb-5 bg-white/20 text-white border-white/20 hover:bg-white/20">
+              Ville premium verificate
             </Badge>
-            
-            <h1 className="text-6xl md:text-7xl lg:text-8xl font-serif font-bold mb-6 text-gradient-gold">
-              Vivi l'Eccellenza
+            <h1 className="text-4xl md:text-6xl font-serif font-bold leading-tight">
+              Trova la villa perfetta
+              <br />
+              per il tuo prossimo viaggio
             </h1>
-            
-            <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-              Scopri le ville più esclusive al mondo con piscine private, viste mozzafiato 
-              e servizi di lusso incomparabili
+            <p className="mt-5 text-white/90 text-lg md:text-xl max-w-2xl">
+              Esperienza di prenotazione rapida, filtri smart e mappa interattiva in tempo reale.
             </p>
+          </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <div className="flex gap-4">
-              <Link href="/properties">
-                <Button size="lg" className="text-lg px-8 py-6">
-                  Esplora le Ville
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-              </Link>
-              <Link href="/properties-map">
-                <Button size="lg" variant="outline" className="text-lg px-8 py-6">
-                  <MapPin className="mr-2 w-5 h-5" />
-                  Vista Mappa
-                </Button>
-              </Link>
-            </div>
-              {!isAuthenticated && (
-                <a href={getLoginUrl()}>
-                  <Button size="lg" variant="outline" className="text-lg px-8 py-6">
-                    Inizia Ora
-                  </Button>
-                </a>
-              )}
-            </div>
+          <Card className="mt-10 bg-white text-slate-900 border-0 shadow-2xl rounded-2xl">
+            <CardContent className="p-4 md:p-5">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                <div className="md:col-span-4">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Dove</label>
+                  <div className="relative mt-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input placeholder="Città o zona" className="pl-9 h-11 border-slate-300" />
+                  </div>
+                </div>
+                <div className="md:col-span-3">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Check-in</label>
+                  <div className="relative mt-1">
+                    <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input placeholder="Data arrivo" className="pl-9 h-11 border-slate-300" />
+                  </div>
+                </div>
+                <div className="md:col-span-3">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Ospiti</label>
+                  <div className="relative mt-1">
+                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input placeholder="2 adulti" className="pl-9 h-11 border-slate-300" />
+                  </div>
+                </div>
+                <div className="md:col-span-2 flex items-end">
+                  <Link href="/properties" className="w-full">
+                    <Button className="w-full h-11 bg-[#0071c2] hover:bg-[#005999] text-white">
+                      Cerca
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      <section className="py-8 bg-white border-b border-slate-200">
+        <div className="container">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="border-slate-200">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#e6f4ff] text-[#0057b8] flex items-center justify-center">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">Prenotazione sicura</p>
+                  <p className="text-sm text-slate-600">Pagamenti protetti e supporto dedicato</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-slate-200">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#e8fff3] text-[#067647] flex items-center justify-center">
+                  <MapPin className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">Mappa in tempo reale</p>
+                  <p className="text-sm text-slate-600">Confronta aree, prezzi e distanze</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-slate-200">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#fff7e8] text-[#b54708] flex items-center justify-center">
+                  <Star className="w-5 h-5 fill-current" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">Qualità selezionata</p>
+                  <p className="text-sm text-slate-600">Solo ville premium con standard elevati</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 bg-background">
+      <section className="py-14">
         <div className="container">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="border-2 hover:border-primary transition-luxury hover:shadow-luxury">
-              <CardContent className="pt-8 text-center">
-                <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Waves className="w-8 h-8 text-primary" />
-                </div>
-                <h3 className="text-2xl font-serif font-semibold mb-4">Piscine Private</h3>
-                <p className="text-muted-foreground">
-                  Ogni villa dispone di piscine esclusive per il massimo relax e privacy
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 hover:border-primary transition-luxury hover:shadow-luxury">
-              <CardContent className="pt-8 text-center">
-                <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Mountain className="w-8 h-8 text-primary" />
-                </div>
-                <h3 className="text-2xl font-serif font-semibold mb-4">Viste Panoramiche</h3>
-                <p className="text-muted-foreground">
-                  Panorami mozzafiato su mare, montagne e paesaggi da sogno
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 hover:border-primary transition-luxury hover:shadow-luxury">
-              <CardContent className="pt-8 text-center">
-                <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Sparkles className="w-8 h-8 text-primary" />
-                </div>
-                <h3 className="text-2xl font-serif font-semibold mb-4">Servizi Premium</h3>
-                <p className="text-muted-foreground">
-                  Chef privati, maggiordomi e concierge 24/7 per un'esperienza indimenticabile
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Properties */}
-      <section className="py-20 bg-muted/30">
-        <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-serif font-bold mb-4 text-gradient-gold">
-              Ville in Evidenza
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Selezione curata delle nostre proprietà più esclusive
-            </p>
+          <div className="flex items-center justify-between mb-7">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-serif font-bold text-slate-900">Ville Consigliate</h2>
+              <p className="text-slate-600 mt-2">Stile Booking: risultati chiari, informazioni utili subito.</p>
+            </div>
+            <Link href="/properties">
+              <Button variant="outline" className="hidden md:inline-flex border-slate-300">
+                Vedi tutte
+              </Button>
+            </Link>
           </div>
 
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[1, 2, 3].map((i) => (
-                <Card key={i} className="overflow-hidden animate-pulse">
-                  <div className="h-64 bg-muted"></div>
-                  <CardContent className="p-6">
-                    <div className="h-6 bg-muted rounded mb-4"></div>
-                    <div className="h-4 bg-muted rounded mb-2"></div>
-                    <div className="h-4 bg-muted rounded w-2/3"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map(item => (
+                <Card key={item} className="overflow-hidden border-slate-200">
+                  <div className="h-48 bg-slate-200 animate-pulse" />
+                  <CardContent className="p-4 space-y-3">
+                    <div className="h-5 bg-slate-200 rounded animate-pulse" />
+                    <div className="h-4 w-2/3 bg-slate-200 rounded animate-pulse" />
+                    <div className="h-4 w-1/2 bg-slate-200 rounded animate-pulse" />
                   </CardContent>
                 </Card>
               ))}
             </div>
-          ) : properties && properties.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {properties.slice(0, 6).map((property) => (
+          ) : featured.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {featured.map(property => (
                 <Link key={property.id} href={`/properties/${property.id}`}>
-                  <Card className="overflow-hidden hover:shadow-luxury-lg transition-luxury cursor-pointer group">
-                    <div className="relative h-64 bg-muted image-overlay">
+                  <Card className="group overflow-hidden border-slate-200 hover:shadow-xl transition-all cursor-pointer">
+                    <div className="relative h-48 overflow-hidden">
                       <img
-                        src={`https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&h=600&fit=crop`}
+                        src="https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1200&h=800&fit=crop"
                         alt={property.title}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-luxury"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
-                      <div className="absolute top-4 right-4">
-                        <Badge className="bg-primary text-primary-foreground">
-                          <Star className="w-3 h-3 mr-1 fill-current" />
-                          Luxury
-                        </Badge>
-                      </div>
+                      <Badge className="absolute left-3 top-3 bg-[#003b95] text-white border-0">
+                        Guest Favorite
+                      </Badge>
                     </div>
-                    <CardContent className="p-6">
-                      <h3 className="text-xl font-serif font-semibold mb-2 group-hover:text-primary transition-luxury">
-                        {property.title}
-                      </h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                        <MapPin className="w-4 h-4" />
-                        <span>{property.city}, {property.country}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Users className="w-4 h-4" />
-                            <span>{property.maxGuests}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <HomeIcon className="w-4 h-4" />
-                            <span>{property.bedrooms} camere</span>
-                          </div>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <h3 className="font-semibold text-lg text-slate-900 leading-tight">{property.title}</h3>
+                        <div className="flex items-center gap-1 text-sm bg-[#003b95] text-white px-2 py-1 rounded-md">
+                          <Star className="w-3 h-3 fill-current" />
+                          <span>9.2</span>
                         </div>
+                      </div>
+                      <p className="text-sm text-slate-600 mt-2 flex items-center gap-1">
+                        <MapPin className="w-4 h-4" />
+                        {property.city}, {property.country}
+                      </p>
+                      <div className="mt-3 flex items-center gap-4 text-sm text-slate-600">
+                        <span className="inline-flex items-center gap-1">
+                          <Users className="w-4 h-4" />
+                          {property.maxGuests}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <BedDouble className="w-4 h-4" />
+                          {property.bedrooms} camere
+                        </span>
+                      </div>
+                      <div className="mt-4 pt-4 border-t border-slate-200 flex items-end justify-between">
+                        <div className="text-xs text-slate-500">A partire da</div>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-primary">
-                            €{property.pricePerNight}
-                          </div>
-                          <div className="text-xs text-muted-foreground">per notte</div>
+                          <div className="text-2xl font-bold text-slate-900">€{property.pricePerNight}</div>
+                          <div className="text-xs text-slate-500">a notte</div>
                         </div>
                       </div>
                     </CardContent>
@@ -244,111 +237,89 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-20">
-              <Sparkles className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-2xl font-serif font-semibold mb-2">Nessuna villa disponibile</h3>
-              <p className="text-muted-foreground mb-6">
-                Le nostre ville esclusive saranno presto disponibili
-              </p>
-              {(user?.role === 'host' || user?.role === 'admin') && (
-                <Link href="/host/properties/new">
-                  <Button>Aggiungi la tua Villa</Button>
-                </Link>
-              )}
-            </div>
-          )}
-
-          {properties && properties.length > 6 && (
-            <div className="text-center mt-12">
-              <Link href="/properties">
-                <Button size="lg" variant="outline" className="shadow-luxury">
-                  Vedi Tutte le Ville
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-              </Link>
-            </div>
+            <Card className="border-slate-200">
+              <CardContent className="p-10 text-center">
+                <h3 className="text-2xl font-serif font-semibold text-slate-900">Nessuna villa pubblicata</h3>
+                <p className="text-slate-600 mt-2 mb-6">Appena le proprietà saranno approvate compariranno qui.</p>
+                {(user?.role === "host" || user?.role === "admin") && (
+                  <Link href="/host/properties/new">
+                    <Button className="bg-[#0071c2] hover:bg-[#005999] text-white">Aggiungi una villa</Button>
+                  </Link>
+                )}
+              </CardContent>
+            </Card>
           )}
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 luxury-gradient">
+      <section className="pb-16">
         <div className="container">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-4xl md:text-5xl font-serif font-bold mb-6">
-              Possiedi una Villa di Lusso?
-            </h2>
-            <p className="text-xl text-muted-foreground mb-8">
-              Unisciti alla nostra esclusiva community di proprietari e condividi 
-              la tua villa con ospiti selezionati da tutto il mondo
-            </p>
-            {isAuthenticated ? (
-              user?.role === 'guest' ? (
-                <Link href="/become-host">
-                  <Button size="lg" className="shadow-luxury-lg gold-shimmer">
-                    Diventa Host
-                    <ArrowRight className="ml-2 w-5 h-5" />
-                  </Button>
-                </Link>
-              ) : (
-                <Link href="/host/properties/new">
-                  <Button size="lg" className="shadow-luxury-lg gold-shimmer">
-                    Aggiungi la tua Villa
-                    <ArrowRight className="ml-2 w-5 h-5" />
-                  </Button>
-                </Link>
-              )
-            ) : (
-              <a href={getLoginUrl()}>
-                <Button size="lg" className="shadow-luxury-lg gold-shimmer">
-                  Inizia Ora
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-              </a>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-secondary text-secondary-foreground py-12">
-        <div className="container">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="w-6 h-6 text-primary" />
-                <span className="text-xl font-serif font-bold">Luxury Booking</span>
+          <Card className="border-0 bg-gradient-to-r from-[#0f172a] via-[#1e293b] to-[#334155] text-white overflow-hidden">
+            <CardContent className="p-8 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+              <div>
+                <h3 className="text-3xl md:text-4xl font-serif font-bold">Hai una villa da affittare?</h3>
+                <p className="text-white/80 mt-2 max-w-2xl">
+                  Pubblica in pochi step, gestisci disponibilità e ricevi richieste qualificate.
+                </p>
               </div>
-              <p className="text-sm text-secondary-foreground/80">
-                La piattaforma esclusiva per ville di lusso con servizi premium
-              </p>
+              {isAuthenticated ? (
+                user?.role === "guest" ? (
+                  <Link href="/become-host">
+                    <Button className="bg-[#0071c2] hover:bg-[#005999] text-white">
+                      Diventa Host
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </Link>
+                ) : (
+                  <Link href="/host/properties/new">
+                    <Button className="bg-[#0071c2] hover:bg-[#005999] text-white">
+                      Pubblica Ora
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </Link>
+                )
+              ) : (
+                <a href={getLoginUrl()}>
+                  <Button className="bg-[#0071c2] hover:bg-[#005999] text-white">
+                    Inizia Subito
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </a>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      <footer className="bg-slate-900 text-slate-300 py-10">
+        <div className="container">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="w-5 h-5 text-[#60a5fa]" />
+                <span className="text-white font-semibold">Luxury Booking</span>
+              </div>
+              <p className="text-sm text-slate-400">Prenotazioni premium con esperienza semplice e veloce.</p>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Esplora</h4>
-              <ul className="space-y-2 text-sm text-secondary-foreground/80">
-                <li><Link href="/properties" className="hover:text-primary transition-colors">Ville</Link></li>
-                <li><Link href="/about" className="hover:text-primary transition-colors">Chi Siamo</Link></li>
-                <li><Link href="/contact" className="hover:text-primary transition-colors">Contatti</Link></li>
-              </ul>
+              <h4 className="text-white font-semibold mb-3">Naviga</h4>
+              <div className="space-y-2 text-sm">
+                <Link href="/properties" className="block hover:text-white">Tutte le ville</Link>
+                <Link href="/properties-map" className="block hover:text-white">Mappa ville</Link>
+                <Link href="/become-host" className="block hover:text-white">Diventa host</Link>
+              </div>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Proprietari</h4>
-              <ul className="space-y-2 text-sm text-secondary-foreground/80">
-                <li><Link href="/become-host" className="hover:text-primary transition-colors">Diventa Host</Link></li>
-                <li><Link href="/host/dashboard" className="hover:text-primary transition-colors">Dashboard</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Supporto</h4>
-              <ul className="space-y-2 text-sm text-secondary-foreground/80">
-                <li><Link href="/help" className="hover:text-primary transition-colors">Centro Assistenza</Link></li>
-                <li><Link href="/terms" className="hover:text-primary transition-colors">Termini</Link></li>
-                <li><Link href="/privacy" className="hover:text-primary transition-colors">Privacy</Link></li>
-              </ul>
+              <h4 className="text-white font-semibold mb-3">Area utente</h4>
+              <div className="space-y-2 text-sm">
+                <Link href="/profile" className="block hover:text-white">Profilo</Link>
+                <Link href="/dashboard" className="block hover:text-white">Dashboard</Link>
+                <Link href="/messages" className="block hover:text-white">Messaggi</Link>
+              </div>
             </div>
           </div>
-          <div className="border-t border-secondary-foreground/20 pt-8 text-center text-sm text-secondary-foreground/60">
-            <p>&copy; 2026 Luxury Booking. Tutti i diritti riservati.</p>
+          <div className="mt-8 pt-5 border-t border-slate-800 text-sm text-slate-500">
+            © 2026 Luxury Booking
           </div>
         </div>
       </footer>
