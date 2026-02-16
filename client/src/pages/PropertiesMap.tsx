@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { MapView } from "@/components/Map";
 import { MapLeaflet } from "@/components/MapLeaflet";
+import { getGoogleMapsClientConfig } from "@/lib/googleMapsConfig";
 import {
   Sparkles,
   MapPin,
@@ -50,7 +51,8 @@ export default function PropertiesMap() {
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [suggestions, setSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [useLeafletFallback, setUseLeafletFallback] = useState(false);
+  const { apiKey } = getGoogleMapsClientConfig();
+  const [useLeafletFallback, setUseLeafletFallback] = useState(!apiKey);
 
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<Map<number, google.maps.Marker>>(new Map());
