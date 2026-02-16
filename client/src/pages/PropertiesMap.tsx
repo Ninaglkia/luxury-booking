@@ -1,24 +1,22 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { trpc } from "@/lib/trpc";
-import { MapView } from "@/components/Map";
-import { MapLeaflet } from "@/components/MapLeaflet";
-import { getGoogleMapsClientConfig } from "@/lib/googleMapsConfig";
-import {
-  Sparkles,
-  MapPin,
-  Users,
-  Bed,
-  Bath,
-  Search,
-  Navigation,
-  Loader2,
-} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
+import {
+  Bath,
+  Bed,
+  Loader2,
+  MapPin,
+  Navigation,
+  Search,
+  Sparkles,
+  Users,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { MapView } from "@/components/Map";
+import { trpc } from "@/lib/trpc";
 
 type Coordinates = { lat: number; lng: number };
 
@@ -46,17 +44,21 @@ export default function PropertiesMap() {
   const [, setLocationRoute] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [hoveredPropertyId, setHoveredPropertyId] = useState<number | null>(null);
+
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const [searchLocation, setSearchLocation] = useState<Coordinates | null>(null);
+  const [mapCenter, setMapCenter] = useState<Coordinates | undefined>(undefined);
+  const [followUser, setFollowUser] = useState(true);
+
   const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [suggestions, setSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
+  const [suggestions, setSuggestions] = useState<
+    google.maps.places.AutocompletePrediction[]
+  >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const { apiKey } = getGoogleMapsClientConfig();
-  const [useLeafletFallback, setUseLeafletFallback] = useState(!apiKey);
 
   const mapRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<Map<number, google.maps.Marker>>(new Map());
-  const autocompleteServiceRef = useRef<google.maps.places.AutocompleteService | null>(null);
+  const autocompleteServiceRef =
+    useRef<google.maps.places.AutocompleteService | null>(null);
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
 
   const {
@@ -69,20 +71,8 @@ export default function PropertiesMap() {
 
   useEffect(() => {
     if (!error) return;
-    console.error("Failed to load properties for map:", error);
     toast.error("Errore caricamento ville. Riprova tra poco.");
   }, [error]);
-
-  const handleGoogleMapFailure = useCallback(
-    (reason: "missing_api_key" | "load_error" | "auth_error" | "timeout") => {
-      if (useLeafletFallback) return;
-
-      console.warn("Google Maps unavailable, switching to Leaflet fallback:", reason);
-      setUseLeafletFallback(true);
-      toast.warning("Google Maps non disponibile: attivata mappa alternativa.");
-    },
-    [useLeafletFallback]
-  );
 
   const calculateDistance = useCallback(
     (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -123,7 +113,12 @@ export default function PropertiesMap() {
           return { ...property, distance: undefined };
         }
 
-        const distance = calculateDistance(refLocation.lat, refLocation.lng, lat, lng);
+        const distance = calculateDistance(
+          refLocation.lat,
+          refLocation.lng,
+          lat,
+          lng
+        );
         return { ...property, distance };
       })
       .sort((a, b) => {
@@ -134,91 +129,68 @@ export default function PropertiesMap() {
       });
   }, [properties, searchTerm, searchLocation, userLocation, calculateDistance]);
 
-  const mapCenter = useMemo(
-    () => searchLocation || userLocation || { lat: 41.9028, lng: 12.4964 },
-    [searchLocation, userLocation]
+  const mapItems = useMemo(() => {
+    return filteredProperties
+      .map(p => ({
+        id: p.id,
+        lat: toNumber(p.latitude) ?? 0,
+        lng: toNumber(p.longitude) ?? 0,
+        title: p.title,
+        price: p.pricePerNight,
+      }))
+      .filter(p => p.lat !== 0 && p.lng !== 0);
+  }, [filteredProperties]);
+
+  const handleUserLocationFound = useCallback(
+    (lat: number, lng: number) => {
+      const coords = { lat, lng };
+      setUserLocation(coords);
+      setIsGettingLocation(false);
+      if (followUser || (!searchLocation && !mapCenter)) setMapCenter(coords);
+    },
+    [followUser, searchLocation, mapCenter]
   );
-
-  const mapZoom = searchLocation || userLocation ? 11 : 6;
-
-  const leafletProperties = useMemo(
-    () =>
-      filteredProperties.map(property => ({
-        id: property.id,
-        title: property.title,
-        latitude: toNumber(property.latitude)?.toString() ?? null,
-        longitude: toNumber(property.longitude)?.toString() ?? null,
-        pricePerNight: property.pricePerNight,
-        images: property.images ?? [],
-      })),
-    [filteredProperties]
-  );
-
-  const clearMarkers = useCallback(() => {
-    markersRef.current.forEach(marker => {
-      marker.setMap(null);
-    });
-    markersRef.current.clear();
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      clearMarkers();
-    };
-  }, [clearMarkers]);
-
-  const createMarkerAppearance = useCallback((price: number, highlighted: boolean) => {
-    return {
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: highlighted ? 24 : 21,
-        fillColor: "#FFFFFF",
-        fillOpacity: 1,
-        strokeColor: highlighted ? "#A16207" : "#D97706",
-        strokeWeight: highlighted ? 3 : 2,
-      },
-      label: {
-        text: `€${price}`,
-        color: "#111827",
-        fontSize: highlighted ? "13px" : "12px",
-        fontWeight: "700",
-      },
-      zIndex: highlighted ? google.maps.Marker.MAX_ZINDEX + 1 : 1,
-    };
-  }, []);
-
-  const handleUserLocationFound = useCallback((lat: number, lng: number) => {
-    setUserLocation({ lat, lng });
-    setIsGettingLocation(false);
-  }, []);
 
   const getUserLocation = useCallback(() => {
     setIsGettingLocation(true);
+    setFollowUser(true);
 
-    if (userLocation && mapRef.current) {
-      mapRef.current.setCenter(userLocation);
-      mapRef.current.setZoom(12);
+    if (userLocation) {
+      setMapCenter(userLocation);
       setIsGettingLocation(false);
       toast.success("Mappa centrata sulla tua posizione");
       return;
     }
 
-    setIsGettingLocation(false);
-    toast.info("Attendi il rilevamento della posizione...");
+    window.setTimeout(() => {
+      setIsGettingLocation(false);
+      toast.info("Attendi il rilevamento della posizione...");
+    }, 1200);
   }, [userLocation]);
 
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchTerm(value);
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchTerm(value);
 
-    if (!value || value.length < 3) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
+      if (!value) {
+        setSearchLocation(null);
+        setSuggestions([]);
+        setShowSuggestions(false);
+        setFollowUser(true);
+        if (userLocation) setMapCenter(userLocation);
+        return;
+      }
 
-    if (!autocompleteServiceRef.current) return;
+      setFollowUser(false);
 
-    try {
+      if (value.length < 3) {
+        setSuggestions([]);
+        setShowSuggestions(false);
+        return;
+      }
+
+      if (!autocompleteServiceRef.current) return;
+
       autocompleteServiceRef.current.getPlacePredictions(
         {
           input: value,
@@ -226,157 +198,61 @@ export default function PropertiesMap() {
           language: "it",
         },
         (predictions, status) => {
-          if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+          if (
+            status === google.maps.places.PlacesServiceStatus.OK &&
+            predictions
+          ) {
             setSuggestions(predictions);
             setShowSuggestions(true);
             return;
           }
 
-          console.warn("Places Autocomplete failed:", status);
-          if (status === google.maps.places.PlacesServiceStatus.REQUEST_DENIED) {
-            toast.error("Errore API Google: abilita Places API nella Cloud Console");
-          }
           setSuggestions([]);
           setShowSuggestions(false);
         }
       );
-    } catch (err) {
-      console.error("Autocomplete error:", err);
-    }
-  }, []);
-
-  const handleSuggestionClick = useCallback((placeId: string, description: string) => {
-    setSearchTerm(description);
-    setShowSuggestions(false);
-
-    if (!geocoderRef.current) return;
-
-    geocoderRef.current.geocode({ placeId }, (results, status) => {
-      if (status === "OK" && results?.[0]) {
-        const location = results[0].geometry.location;
-        const coords = {
-          lat: location.lat(),
-          lng: location.lng(),
-        };
-
-        setSearchLocation(coords);
-
-        if (mapRef.current) {
-          mapRef.current.setCenter(coords);
-          mapRef.current.setZoom(11);
-        }
-        return;
-      }
-
-      console.error("Geocoding failed:", status);
-      if (status === "REQUEST_DENIED") {
-        toast.error("Errore Geocoding: abilita Geocoding API nella Google Cloud Console");
-      } else {
-        toast.error(`Errore ricerca posizione: ${status}`);
-      }
-    });
-  }, []);
-
-  const handleMapReady = useCallback(
-    (map: google.maps.Map) => {
-      if (useLeafletFallback) return;
-
-      mapRef.current = map;
-
-      try {
-        autocompleteServiceRef.current = new google.maps.places.AutocompleteService();
-      } catch (err) {
-        console.warn("Places AutocompleteService not available", err);
-        autocompleteServiceRef.current = null;
-      }
-
-      try {
-        geocoderRef.current = new google.maps.Geocoder();
-      } catch (err) {
-        console.warn("Geocoder not available", err);
-        geocoderRef.current = null;
-      }
     },
-    [useLeafletFallback]
+    [userLocation]
   );
 
-  useEffect(() => {
-    if (useLeafletFallback) return;
+  const handleSuggestionClick = useCallback(
+    (placeId: string, description: string) => {
+      setSearchTerm(description);
+      setShowSuggestions(false);
+      setFollowUser(false);
 
-    const map = mapRef.current;
-    if (!map || !window.google?.maps) return;
+      if (!geocoderRef.current) return;
 
-    clearMarkers();
+      geocoderRef.current.geocode({ placeId }, (results, status) => {
+        if (status === "OK" && results?.[0]) {
+          const location = results[0].geometry.location;
+          const coords = {
+            lat: location.lat(),
+            lng: location.lng(),
+          };
 
-    if (filteredProperties.length === 0) return;
-
-    const bounds = new google.maps.LatLngBounds();
-    let hasValidMarkers = false;
-
-    filteredProperties.forEach(property => {
-      const lat = toNumber(property.latitude);
-      const lng = toNumber(property.longitude);
-      if (lat === null || lng === null) return;
-
-      const appearance = createMarkerAppearance(property.pricePerNight, false);
-      const marker = new google.maps.Marker({
-        map,
-        position: { lat, lng },
-        title: property.title,
-        icon: appearance.icon,
-        label: appearance.label,
-        zIndex: appearance.zIndex,
+          setSearchLocation(coords);
+          setMapCenter(coords);
+          return;
+        }
       });
+    },
+    []
+  );
 
-      marker.addListener("click", () => {
-        setLocationRoute(`/properties/${property.id}`);
-      });
-
-      marker.addListener("mouseover", () => {
-        setHoveredPropertyId(property.id);
-      });
-
-      marker.addListener("mouseout", () => {
-        setHoveredPropertyId(current => (current === property.id ? null : current));
-      });
-
-      markersRef.current.set(property.id, marker);
-      bounds.extend({ lat, lng });
-      hasValidMarkers = true;
-    });
-
-    if (!hasValidMarkers) return;
-
-    map.fitBounds(bounds);
-
-    google.maps.event.addListenerOnce(map, "idle", () => {
-      const zoom = map.getZoom();
-      if (zoom && zoom > 14) {
-        map.setZoom(14);
-      }
-    });
-  }, [filteredProperties, clearMarkers, createMarkerAppearance, setLocationRoute, useLeafletFallback]);
-
-  useEffect(() => {
-    if (useLeafletFallback) return;
-    if (!window.google?.maps || filteredProperties.length === 0) return;
-
-    const priceByPropertyId = new Map(
-      filteredProperties.map(property => [property.id, property.pricePerNight])
-    );
-
-    markersRef.current.forEach((marker, propertyId) => {
-      const price = priceByPropertyId.get(propertyId);
-      if (!price) return;
-
-      const highlighted = hoveredPropertyId === propertyId;
-      const appearance = createMarkerAppearance(price, highlighted);
-
-      marker.setIcon(appearance.icon);
-      marker.setLabel(appearance.label);
-      marker.setZIndex(appearance.zIndex);
-    });
-  }, [hoveredPropertyId, filteredProperties, createMarkerAppearance, useLeafletFallback]);
+  const handleMapReady = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+    try {
+      autocompleteServiceRef.current = new google.maps.places.AutocompleteService();
+    } catch {
+      autocompleteServiceRef.current = null;
+    }
+    try {
+      geocoderRef.current = new google.maps.Geocoder();
+    } catch {
+      geocoderRef.current = null;
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -386,7 +262,9 @@ export default function PropertiesMap() {
             <Link href="/">
               <div className="flex items-center gap-2 cursor-pointer">
                 <Sparkles className="w-8 h-8 text-primary" />
-                <span className="text-2xl font-serif font-bold text-gradient-gold">Luxury Booking</span>
+                <span className="text-2xl font-serif font-bold text-gradient-gold">
+                  Luxury Booking
+                </span>
               </div>
             </Link>
             <div className="flex items-center gap-4">
@@ -409,7 +287,7 @@ export default function PropertiesMap() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
                 <Input
                   type="text"
-                  placeholder="Cerca città..."
+                  placeholder="Cerca città…"
                   value={searchTerm}
                   onChange={e => handleSearchChange(e.target.value)}
                   onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
@@ -430,13 +308,18 @@ export default function PropertiesMap() {
                 </Button>
               </div>
 
-              {showSuggestions && suggestions.length > 0 && (
+              {showSuggestions && suggestions.length > 0 ? (
                 <Card className="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto">
                   {suggestions.map(suggestion => (
                     <div
                       key={suggestion.place_id}
                       className="p-3 hover:bg-accent cursor-pointer border-b last:border-b-0"
-                      onClick={() => handleSuggestionClick(suggestion.place_id, suggestion.description)}
+                      onClick={() =>
+                        handleSuggestionClick(
+                          suggestion.place_id,
+                          suggestion.description
+                        )
+                      }
                     >
                       <div className="flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-muted-foreground" />
@@ -445,7 +328,7 @@ export default function PropertiesMap() {
                     </div>
                   ))}
                 </Card>
-              )}
+              ) : null}
             </div>
 
             <div className="flex items-center justify-between">
@@ -460,10 +343,6 @@ export default function PropertiesMap() {
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
                 </div>
-              ) : error ? (
-                <div className="text-center py-12">
-                  <p className="text-red-600">Errore nel caricamento delle ville</p>
-                </div>
               ) : filteredProperties.length > 0 ? (
                 filteredProperties.map(property => (
                   <Card
@@ -476,16 +355,18 @@ export default function PropertiesMap() {
                     onClick={() => setLocationRoute(`/properties/${property.id}`)}
                   >
                     <div className="flex gap-4">
-                      {property.images && property.images.length > 0 && (
+                      {property.images?.[0] ? (
                         <img
                           src={property.images[0].imageUrl}
                           alt={property.title}
                           className="w-24 h-24 object-cover rounded-lg"
                         />
-                      )}
+                      ) : null}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between mb-2">
-                          <h3 className="font-serif font-semibold truncate">{property.title}</h3>
+                          <h3 className="font-serif font-semibold truncate">
+                            {property.title}
+                          </h3>
                           <Badge variant="outline" className="ml-2 flex-shrink-0">
                             €{property.pricePerNight}/notte
                           </Badge>
@@ -494,11 +375,11 @@ export default function PropertiesMap() {
                           <MapPin className="w-3 h-3" />
                           {property.city}, {property.country}
                         </p>
-                        {property.distance !== undefined && (
+                        {property.distance !== undefined ? (
                           <p className="text-xs text-primary font-semibold">
                             {property.distance.toFixed(1)} km di distanza
                           </p>
-                        )}
+                        ) : null}
                         <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
                           <span className="flex items-center gap-1">
                             <Users className="w-3 h-3" />
@@ -527,27 +408,23 @@ export default function PropertiesMap() {
         </div>
 
         <div className="flex-1 relative h-[55vh] lg:h-full min-h-[420px] order-1 lg:order-2">
-          {useLeafletFallback ? (
-            <MapLeaflet
-              className="w-full h-full min-h-[420px]"
-              properties={leafletProperties}
-              userLocation={userLocation}
-              center={mapCenter}
-              zoom={mapZoom}
-              hoveredPropertyId={hoveredPropertyId}
-              onMarkerClick={id => setLocationRoute(`/properties/${id}`)}
-              onMarkerHover={id => setHoveredPropertyId(id)}
-            />
-          ) : (
-            <MapView
-              initialCenter={{ lat: 41.9028, lng: 12.4964 }}
-              initialZoom={6}
-              onMapReady={handleMapReady}
-              onLocationFound={handleUserLocationFound}
-              onLoadFailure={handleGoogleMapFailure}
-              className="w-full h-full min-h-[420px]"
-            />
-          )}
+          <MapView
+            initialCenter={{ lat: 41.9028, lng: 12.4964 }}
+            initialZoom={6}
+            onMapReady={handleMapReady}
+            onLocationFound={handleUserLocationFound}
+            className="w-full h-full min-h-[420px]"
+            items={mapItems}
+            highlightedItemId={hoveredPropertyId}
+            onItemHover={setHoveredPropertyId}
+            onItemClick={(id: number) => setLocationRoute(`/properties/${id}`)}
+            center={mapCenter}
+            followUser={followUser}
+            fitToUserAndItems={!followUser}
+            onLoadFailure={() => {
+              toast.warning("Google Maps non disponibile: uso la mappa alternativa.");
+            }}
+          />
         </div>
       </div>
     </div>
