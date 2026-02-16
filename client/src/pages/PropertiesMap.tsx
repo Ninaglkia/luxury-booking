@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { MapView } from "@/components/Map";
+import { MapLeaflet } from "@/components/MapLeaflet";
+import { getGoogleMapsClientConfig } from "@/lib/googleMapsConfig";
 import {
   Sparkles,
   MapPin,
@@ -49,6 +51,11 @@ export default function PropertiesMap() {
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [suggestions, setSuggestions] = useState<google.maps.places.AutocompletePrediction[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const { apiKey } = getGoogleMapsClientConfig();
+  const [useLeaflet, setUseLeaflet] = useState(!apiKey);
+  const mapCenter = searchLocation || userLocation || { lat: 41.9028, lng: 12.4964 };
+  const [mapZoom] = useState(6);
 
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<Map<number, google.maps.Marker>>(new Map());
@@ -484,13 +491,31 @@ export default function PropertiesMap() {
         </div>
 
         <div className="flex-1 relative h-[55vh] lg:h-full min-h-[420px] order-1 lg:order-2">
-          <MapView
-            initialCenter={{ lat: 41.9028, lng: 12.4964 }}
-            initialZoom={6}
-            onMapReady={handleMapReady}
-            onLocationFound={handleUserLocationFound}
-            className="w-full h-full min-h-[420px]"
-          />
+          {useLeaflet ? (
+            <MapLeaflet
+              properties={filteredProperties.map(p => ({
+                ...p,
+                latitude: p.latitude != null ? String(p.latitude) : null,
+                longitude: p.longitude != null ? String(p.longitude) : null,
+              }))}
+              userLocation={userLocation}
+              center={mapCenter}
+              zoom={mapZoom}
+              hoveredPropertyId={hoveredPropertyId}
+              onMarkerClick={id => setLocationRoute(`/properties/${id}`)}
+              onMarkerHover={id => setHoveredPropertyId(id)}
+              className="w-full h-full min-h-[420px]"
+            />
+          ) : (
+            <MapView
+              initialCenter={{ lat: 41.9028, lng: 12.4964 }}
+              initialZoom={6}
+              onMapReady={handleMapReady}
+              onLocationFound={handleUserLocationFound}
+              onFallback={() => setUseLeaflet(true)}
+              className="w-full h-full min-h-[420px]"
+            />
+          )}
         </div>
       </div>
     </div>

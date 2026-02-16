@@ -4,11 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { trpc } from "@/lib/trpc";
-import { 
-  MapPin, 
-  Users, 
-  Star, 
+import { toast } from "sonner";
+import type { DateRange } from "react-day-picker";
+import {
+  MapPin,
+  Users,
+  Star,
   Home as HomeIcon,
   Bed,
   Bath,
@@ -17,18 +23,71 @@ import {
   MessageCircle,
   ArrowLeft,
   Sparkles,
-  Check
+  Check,
+  X
 } from "lucide-react";
-import { Link, useParams } from "wouter";
+import { Link, useParams, useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const { user, isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
   const propertyId = parseInt(id || "0");
-  
+
+  const [showBooking, setShowBooking] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [guests, setGuests] = useState(1);
+  const [guestName, setGuestName] = useState(user?.name || "");
+  const [guestEmail, setGuestEmail] = useState(user?.email || "");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [specialRequests, setSpecialRequests] = useState("");
+
   const { data: property, isLoading } = trpc.properties.getById.useQuery({ id: propertyId });
   const { data: reviews } = trpc.reviews.getByProperty.useQuery({ propertyId });
+
+  const createBooking = trpc.bookings.create.useMutation({
+    onSuccess: () => {
+      toast.success("Prenotazione confermata! Riceverai una email di conferma.");
+      setShowBooking(false);
+      setDateRange(undefined);
+      navigate("/dashboard");
+    },
+    onError: (err) => {
+      toast.error(err.message || "Errore durante la prenotazione. Riprova.");
+    },
+  });
+
+  const nights =
+    dateRange?.from && dateRange?.to
+      ? Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24))
+      : 0;
+  const totalPrice = nights * (property?.pricePerNight || 0);
+
+  const handleConfirmBooking = () => {
+    if (!dateRange?.from || !dateRange?.to) {
+      toast.error("Seleziona le date di check-in e check-out.");
+      return;
+    }
+    if (nights < (property?.minimumStay || 1)) {
+      toast.error(`Soggiorno minimo: ${property?.minimumStay} notti.`);
+      return;
+    }
+    if (!guestName || !guestEmail) {
+      toast.error("Inserisci nome e email.");
+      return;
+    }
+    createBooking.mutate({
+      propertyId,
+      checkInDate: dateRange.from,
+      checkOutDate: dateRange.to,
+      numberOfGuests: guests,
+      guestName,
+      guestEmail,
+      guestPhone: guestPhone || undefined,
+      specialRequests: specialRequests || undefined,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -114,6 +173,149 @@ export default function PropertyDetail() {
           </div>
         </div>
       </section>
+
+      {/* Booking Modal */}
+      <Dialog open={showBooking} onOpenChange={setShowBooking}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-serif">
+              Prenota — {property?.title}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Calendar */}
+            <div>
+              <Label className="text-base font-semibold mb-3 block">
+                Seleziona le date
+              </Label>
+              <div className="flex justify-center border rounded-xl p-2">
+                <CalendarComponent
+                  mode="range"
+                  selected={dateRange}
+                  onSelect={setDateRange}
+                  numberOfMonths={2}
+                  disabled={{ before: new Date() }}
+                  locale={undefined}
+                />
+              </div>
+              {dateRange?.from && dateRange?.to && (
+                <div className="flex justify-between mt-3 text-sm text-muted-foreground bg-muted/40 rounded-lg px-4 py-2">
+                  <span>
+                    Check-in: <strong>{dateRange.from.toLocaleDateString("it-IT")}</strong>
+                  </span>
+                  <span>
+                    Check-out: <strong>{dateRange.to.toLocaleDateString("it-IT")}</strong>
+                  </span>
+                  <span>
+                    <strong>{nights}</strong> {nights === 1 ? "notte" : "notti"}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Guests + details */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="guests">Numero ospiti</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setGuests(g => Math.max(1, g - 1))}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                  <span className="w-8 text-center font-semibold">{guests}</span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setGuests(g => Math.min(property?.maxGuests || 99, g + 1))}
+                  >
+                    <Users className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    / {property?.maxGuests} max
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="guestName">Nome completo *</Label>
+                <Input
+                  id="guestName"
+                  value={guestName}
+                  onChange={e => setGuestName(e.target.value)}
+                  placeholder="Mario Rossi"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="guestEmail">Email *</Label>
+                <Input
+                  id="guestEmail"
+                  type="email"
+                  value={guestEmail}
+                  onChange={e => setGuestEmail(e.target.value)}
+                  placeholder="mario@email.com"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="guestPhone">Telefono</Label>
+                <Input
+                  id="guestPhone"
+                  value={guestPhone}
+                  onChange={e => setGuestPhone(e.target.value)}
+                  placeholder="+39 333 1234567"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="specialRequests">Richieste speciali</Label>
+                <Input
+                  id="specialRequests"
+                  value={specialRequests}
+                  onChange={e => setSpecialRequests(e.target.value)}
+                  placeholder="Arrivo tardivo, ecc."
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Price summary */}
+            {nights > 0 && (
+              <div className="space-y-2 bg-muted/30 rounded-xl px-4 py-3">
+                <div className="flex justify-between text-sm">
+                  <span>€{property?.pricePerNight} × {nights} {nights === 1 ? "notte" : "notti"}</span>
+                  <span>€{totalPrice}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between font-bold text-lg">
+                  <span>Totale</span>
+                  <span className="text-primary">€{totalPrice}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Non ti verrà addebitato nulla ora</p>
+              </div>
+            )}
+
+            <Button
+              className="w-full shadow-luxury gold-shimmer"
+              size="lg"
+              onClick={handleConfirmBooking}
+              disabled={createBooking.isPending || !dateRange?.from || !dateRange?.to}
+            >
+              {createBooking.isPending ? "Prenotazione in corso..." : "Conferma Prenotazione"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Content */}
       <section className="container pb-12">
@@ -258,7 +460,11 @@ export default function PropertyDetail() {
 
                 {isAuthenticated ? (
                   <>
-                    <Button className="w-full shadow-luxury gold-shimmer" size="lg">
+                    <Button
+                      className="w-full shadow-luxury gold-shimmer"
+                      size="lg"
+                      onClick={() => setShowBooking(true)}
+                    >
                       <Calendar className="w-5 h-5 mr-2" />
                       Prenota Ora
                     </Button>

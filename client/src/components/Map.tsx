@@ -98,6 +98,7 @@ interface MapViewProps {
   onMapReady?: (map: google.maps.Map) => void;
   showUserLocation?: boolean;
   onLocationFound?: (lat: number, lng: number) => void;
+  onFallback?: () => void;
 }
 
 export function MapView({
@@ -107,6 +108,7 @@ export function MapView({
   onMapReady,
   showUserLocation = true,
   onLocationFound,
+  onFallback,
 }: MapViewProps) {
   const [authError, setAuthError] = useState(false);
   const [loadTimeoutReached, setLoadTimeoutReached] = useState(false);
@@ -205,6 +207,13 @@ export function MapView({
         : loadTimeoutReached && !isLoaded
           ? "Google Maps in timeout. Mostro OpenStreetMap."
           : null;
+
+  useEffect(() => {
+    if (fallbackReason) {
+      onFallback?.();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!fallbackReason]);
 
   if (fallbackReason) {
     return (
