@@ -181,8 +181,6 @@ export default function PropertiesMap() {
         return;
       }
 
-      setFollowUser(false);
-
       if (value.length < 3) {
         setSuggestions([]);
         setShowSuggestions(false);
