@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { MapView } from "@/components/Map";
 import { trpc } from "@/lib/trpc";
 import { 
   MapPin, 
@@ -14,18 +15,37 @@ import {
   Filter,
   Sparkles
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+
+const toNumber = (value: unknown): number | null => {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
 
 export default function Properties() {
   const { user } = useAuth();
+  const [, setLocationRoute] = useLocation();
   const { data: properties, isLoading } = trpc.properties.list.useQuery();
   const [searchQuery, setSearchQuery] = useState("");
+  const [hoveredPropertyId, setHoveredPropertyId] = useState<number | null>(null);
 
   const filteredProperties = properties?.filter(property => 
     property.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     property.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
     property.country.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const mapItems = useMemo(() => {
+    return (filteredProperties ?? [])
+      .map(p => ({
+        id: p.id,
+        lat: toNumber((p as unknown as { latitude?: unknown }).latitude) ?? 0,
+        lng: toNumber((p as unknown as { longitude?: unknown }).longitude) ?? 0,
+        title: p.title,
+        price: p.pricePerNight,
+      }))
+      .filter(p => p.lat !== 0 && p.lng !== 0);
+  }, [filteredProperties]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -108,70 +128,102 @@ export default function Properties() {
                 </Card>
               ))}
             </div>
-          ) : filteredProperties && filteredProperties.length > 0 ? (
-            <>
-              <div className="mb-6 text-muted-foreground">
-                {filteredProperties.length} {filteredProperties.length === 1 ? 'villa trovata' : 'ville trovate'}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {filteredProperties.map((property) => (
-                  <Link key={property.id} href={`/properties/${property.id}`}>
-                    <Card className="overflow-hidden hover:shadow-luxury-lg transition-luxury cursor-pointer group h-full">
-                      <div className="relative h-64 bg-muted image-overlay">
-                        <img
-                          src={`https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&h=600&fit=crop&q=80`}
-                          alt={property.title}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-luxury"
-                        />
-                        <div className="absolute top-4 right-4">
-                          <Badge className="bg-primary text-primary-foreground">
-                            <Star className="w-3 h-3 mr-1 fill-current" />
-                            Luxury
-                          </Badge>
-                        </div>
-                      </div>
-                      <CardContent className="p-6">
-                        <h3 className="text-xl font-serif font-semibold mb-2 group-hover:text-primary transition-luxury line-clamp-1">
-                          {property.title}
-                        </h3>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                          <MapPin className="w-4 h-4 flex-shrink-0" />
-                          <span className="line-clamp-1">{property.city}, {property.country}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Users className="w-4 h-4" />
-                              <span>{property.maxGuests}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <HomeIcon className="w-4 h-4" />
-                              <span>{property.bedrooms}</span>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-primary">
-                              €{property.pricePerNight}
-                            </div>
-                            <div className="text-xs text-muted-foreground">per notte</div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-            </>
           ) : (
-            <div className="text-center py-20">
-              <Sparkles className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-2xl font-serif font-semibold mb-2">Nessuna villa trovata</h3>
-              <p className="text-muted-foreground mb-6">
-                Prova a modificare i criteri di ricerca
-              </p>
-              <Button onClick={() => setSearchQuery("")} variant="outline">
-                Cancella Ricerca
-              </Button>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              <div className="lg:col-span-7 xl:col-span-8 order-2 lg:order-1">
+                {filteredProperties && filteredProperties.length > 0 ? (
+                  <>
+                    <div className="mb-6 text-muted-foreground">
+                      {filteredProperties.length}{" "}
+                      {filteredProperties.length === 1 ? "villa trovata" : "ville trovate"}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {filteredProperties.map(property => (
+                        <Link key={property.id} href={`/properties/${property.id}`}>
+                          <Card
+                            className="overflow-hidden hover:shadow-luxury-lg transition-luxury cursor-pointer group h-full"
+                            onMouseEnter={() => setHoveredPropertyId(property.id)}
+                            onMouseLeave={() => setHoveredPropertyId(null)}
+                          >
+                            <div className="relative h-64 bg-muted image-overlay">
+                              <img
+                                src={`https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&h=600&fit=crop&q=80`}
+                                alt={property.title}
+                                className="w-full h-full object-cover group-hover:scale-110 transition-luxury"
+                              />
+                              <div className="absolute top-4 right-4">
+                                <Badge className="bg-primary text-primary-foreground">
+                                  <Star className="w-3 h-3 mr-1 fill-current" />
+                                  Luxury
+                                </Badge>
+                              </div>
+                            </div>
+                            <CardContent className="p-6">
+                              <h3 className="text-xl font-serif font-semibold mb-2 group-hover:text-primary transition-luxury line-clamp-1">
+                                {property.title}
+                              </h3>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                                <MapPin className="w-4 h-4 flex-shrink-0" />
+                                <span className="line-clamp-1">
+                                  {property.city}, {property.country}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                  <div className="flex items-center gap-1">
+                                    <Users className="w-4 h-4" />
+                                    <span>{property.maxGuests}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <HomeIcon className="w-4 h-4" />
+                                    <span>{property.bedrooms}</span>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-2xl font-bold text-primary">
+                                    €{property.pricePerNight}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">per notte</div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-20">
+                    <Sparkles className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-2xl font-serif font-semibold mb-2">
+                      Nessuna villa trovata
+                    </h3>
+                    <p className="text-muted-foreground mb-6">
+                      Prova a modificare i criteri di ricerca
+                    </p>
+                    <Button onClick={() => setSearchQuery("")} variant="outline">
+                      Cancella Ricerca
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="lg:col-span-5 xl:col-span-4 order-1 lg:order-2">
+                <div className="lg:sticky lg:top-24 h-[55vh] lg:h-[calc(100vh-120px)] min-h-[420px] rounded-xl overflow-hidden border bg-muted">
+                  <MapView
+                    className="w-full h-full"
+                    initialCenter={{ lat: 20, lng: 0 }}
+                    initialZoom={2}
+                    items={mapItems}
+                    highlightedItemId={hoveredPropertyId}
+                    onItemHover={setHoveredPropertyId}
+                    onItemClick={(id: number) => setLocationRoute(`/properties/${id}`)}
+                    followUser={true}
+                    followUserZoom={12}
+                    fitToUserAndItems={false}
+                  />
+                </div>
+              </div>
             </div>
           )}
         </div>
