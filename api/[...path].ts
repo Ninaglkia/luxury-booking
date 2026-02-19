@@ -1,55 +1,36 @@
-import express, { type Express } from "express";
+import express from "express";
 import type { Request, Response } from "express";
+import { createExpressMiddleware } from "@trpc/server/adapters/express";
+import { appRouter } from "../server/routers";
+import { createContext } from "../server/_core/context";
+import { oauthRouter } from "../server/_core/oauth";
 
-let appPromise: Promise<Express> | null = null;
+const app = express();
 
-async function createApiApp(): Promise<Express> {
-  const [{ createExpressMiddleware }, { appRouter }, { createContext }, { oauthRouter }] =
-    await Promise.all([
-      import("@trpc/server/adapters/express"),
-      import("../server/routers"),
-      import("../server/_core/context"),
-      import("../server/_core/oauth"),
-    ]);
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-  const app = express();
+app.use("/api", oauthRouter);
+app.use("/", oauthRouter);
 
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use(
+  "/api/trpc",
+  createExpressMiddleware({
+    router: appRouter,
+    createContext,
+  })
+);
 
-  app.use("/api", oauthRouter);
-  app.use("/", oauthRouter);
-
-  app.use(
-    "/api/trpc",
-    createExpressMiddleware({
-      router: appRouter,
-      createContext,
-    })
-  );
-
-  app.use(
-    "/trpc",
-    createExpressMiddleware({
-      router: appRouter,
-      createContext,
-    })
-  );
-
-  return app;
-}
-
-async function getApiApp(): Promise<Express> {
-  if (!appPromise) {
-    appPromise = createApiApp();
-  }
-
-  return appPromise;
-}
+app.use(
+  "/trpc",
+  createExpressMiddleware({
+    router: appRouter,
+    createContext,
+  })
+);
 
 export default async function handler(req: Request, res: Response) {
   try {
-    const app = await getApiApp();
     return app(req, res);
   } catch (error) {
     console.error("[API] Bootstrap failed", error);
