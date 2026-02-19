@@ -5,7 +5,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/[...path].ts"
+      "dest": "/api/[...path].js"
     },
     {
       "handle": "filesystem"
