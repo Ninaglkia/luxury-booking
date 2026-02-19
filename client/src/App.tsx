@@ -1,6 +1,8 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
+import Login from "@/pages/Login";
+import AuthCallback from "@/pages/AuthCallback";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -8,6 +10,8 @@ import Home from "./pages/Home";
 import Properties from "./pages/Properties";
 import PropertyDetail from "./pages/PropertyDetail";
 import PropertiesMap from "./pages/PropertiesMap";
+import SearchResults from "./pages/SearchResults";
+import Checkout from "./pages/Checkout";
 import BecomeHost from "./pages/BecomeHost";
 import HostDashboard from "./pages/host/HostDashboard";
 import AddProperty from "./pages/host/AddProperty";
@@ -23,6 +27,8 @@ function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/search"} component={SearchResults} />
+      <Route path={"/checkout"} component={Checkout} />
       <Route path={"/properties"} component={Properties} />
       <Route path={"/properties-map"} component={PropertiesMap} />
       <Route path={"/properties/:id"} component={PropertyDetail} />
@@ -35,6 +41,8 @@ function Router() {
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/verification"} component={Verification} />
       <Route path={"/profile"} component={Profile} />
+      <Route path={"/login"} component={Login} />
+      <Route path={"/auth/callback"} component={AuthCallback} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

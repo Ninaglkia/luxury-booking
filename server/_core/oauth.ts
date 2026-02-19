@@ -1,16 +1,23 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const";
 import { type Request, type Response, Router } from "express";
+import { createClient } from "@supabase/supabase-js";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
+import { ENV } from "./env";
 
-function getQueryParam(req: Request, key: string): string | undefined {
-  const value = req.query[key];
-  return typeof value === "string" ? value : undefined;
+function getSupabaseAdmin() {
+  if (!ENV.supabaseUrl || !ENV.supabaseServiceRoleKey) {
+    throw new Error("Supabase server config missing: set VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY");
+  }
+  return createClient(ENV.supabaseUrl, ENV.supabaseServiceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
 }
 
 export const oauthRouter = Router();
 
+// Dev-only login (crea utente dummy senza bisogno di credenziali)
 oauthRouter.get("/dev/login", async (req: Request, res: Response) => {
   try {
     const dummyUser = {
@@ -38,48 +45,60 @@ oauthRouter.get("/dev/login", async (req: Request, res: Response) => {
   }
 });
 
-oauthRouter.get("/oauth/callback", async (req: Request, res: Response) => {
-  const code = getQueryParam(req, "code");
-  const state = getQueryParam(req, "state");
+// Endpoint chiamato dal frontend dopo il login con Supabase Auth.
+// Riceve l'access_token di Supabase, lo verifica, crea/aggiorna l'utente nel DB
+// e imposta il cookie di sessione JWT (meccanismo identico a prima).
+oauthRouter.post("/auth/supabase-session", async (req: Request, res: Response) => {
+  const { access_token } = req.body ?? {};
 
-  if (!code || !state) {
-    res.status(400).json({ error: "code and state are required" });
+  if (!access_token || typeof access_token !== "string") {
+    res.status(400).json({ error: "access_token is required" });
     return;
   }
 
   try {
-    const tokenResponse = await sdk.exchangeCodeForToken(code, state);
-    const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.auth.getUser(access_token);
 
-    if (!userInfo.openId) {
-      res.status(400).json({ error: "openId missing from user info" });
+    if (error || !data.user) {
+      console.error("[Auth] Invalid Supabase token", error);
+      res.status(401).json({ error: "Invalid token" });
       return;
     }
 
+    const supabaseUser = data.user;
+    const openId = supabaseUser.id; // UUID Supabase → usato come openId
+    const email = supabaseUser.email ?? null;
+    const name =
+      (supabaseUser.user_metadata?.full_name as string | undefined) ??
+      (supabaseUser.user_metadata?.name as string | undefined) ??
+      email?.split("@")[0] ??
+      "User";
+    const loginMethod = supabaseUser.app_metadata?.provider ?? "email";
+
     await db.upsertUser({
-      openId: userInfo.openId,
-      name: userInfo.name || null,
-      email: userInfo.email ?? null,
-      loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
+      openId,
+      name,
+      email,
+      loginMethod,
       lastSignedIn: new Date(),
     });
 
-    const sessionToken = await sdk.createSessionToken(userInfo.openId, {
-      name: userInfo.name || "",
+    const sessionToken = await sdk.createSessionToken(openId, {
+      name,
       expiresInMs: ONE_YEAR_MS,
     });
 
     const cookieOptions = getSessionCookieOptions(req);
     res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
-    res.redirect(302, "/");
+    res.json({ success: true });
   } catch (error) {
-    console.error("[OAuth] Callback failed", error);
-    res.status(500).json({ error: "OAuth callback failed" });
+    console.error("[Auth] Supabase session error", error);
+    res.status(500).json({ error: "Session creation failed" });
   }
 });
 
 export function registerOAuthRoutes(app: any) {
   app.use("/api", oauthRouter);
 }
-
