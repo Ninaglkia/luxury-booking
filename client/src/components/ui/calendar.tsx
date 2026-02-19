@@ -128,7 +128,8 @@ function Calendar({
             <div
               data-slot="calendar"
               ref={rootRef}
-              className={cn(className)}
+              tabIndex={-1}
+              className={cn("outline-none", className)}
               {...props}
             />
           );
@@ -180,7 +181,14 @@ function CalendarDayButton({
 
   const ref = React.useRef<HTMLButtonElement>(null);
   React.useEffect(() => {
-    if (modifiers.focused) ref.current?.focus();
+    if (!modifiers.focused) return;
+    // Only auto-focus during keyboard navigation (when focus is already inside the calendar).
+    // Skipping auto-focus on mount prevents Radix's DismissableLayer from firing
+    // onFocusOutside → onDismiss on the very first mouse click inside the popover.
+    const calendarRoot = ref.current?.closest('[data-slot="calendar"]');
+    if (calendarRoot && calendarRoot.contains(document.activeElement) && document.activeElement !== document.body) {
+      ref.current?.focus();
+    }
   }, [modifiers.focused]);
 
   return (
