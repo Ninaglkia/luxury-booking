@@ -283,7 +283,7 @@ export default function Home() {
                 <a href={getLoginUrl()}>
                   <button className="flex items-center gap-2 border border-slate-300 rounded-full px-3 py-1.5 hover:shadow-md transition-shadow">
                     <User className="w-4 h-4 text-slate-600" />
-                    <span className="text-sm font-medium text-slate-700 hidden sm:block">Accedi</span>
+                    <span className="text-sm font-medium text-slate-700 hidden sm:block">Accedi / Registrati</span>
                   </button>
                 </a>
               )}
