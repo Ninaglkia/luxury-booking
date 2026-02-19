@@ -7,10 +7,16 @@ import { sdk } from "./sdk";
 import { ENV } from "./env";
 
 function getSupabaseAdmin() {
-  if (!ENV.supabaseUrl || !ENV.supabaseServiceRoleKey) {
-    throw new Error("Supabase server config missing: set VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY");
+  if (!ENV.supabaseUrl) {
+    throw new Error("VITE_SUPABASE_URL is not set");
   }
-  return createClient(ENV.supabaseUrl, ENV.supabaseServiceRoleKey, {
+  // Service role key is preferred (admin access); anon key works for getUser() as fallback.
+  const key = ENV.supabaseServiceRoleKey || ENV.supabaseAnonKey;
+  if (!key) {
+    throw new Error("Neither SUPABASE_SERVICE_ROLE_KEY nor VITE_SUPABASE_ANON_KEY is set");
+  }
+  console.log("[Auth] Supabase client using key type:", ENV.supabaseServiceRoleKey ? "service_role" : "anon");
+  return createClient(ENV.supabaseUrl, key, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }
@@ -61,8 +67,11 @@ oauthRouter.post("/auth/supabase-session", async (req: Request, res: Response) =
     const { data, error } = await supabase.auth.getUser(access_token);
 
     if (error || !data.user) {
-      console.error("[Auth] Invalid Supabase token", error);
-      res.status(401).json({ error: "Invalid token" });
+      console.error("[Auth] Invalid Supabase token. Error:", error?.message ?? "no user returned");
+      console.error("[Auth] supabaseUrl:", ENV.supabaseUrl ? "set" : "MISSING");
+      console.error("[Auth] serviceRoleKey:", ENV.supabaseServiceRoleKey ? "set" : "MISSING");
+      console.error("[Auth] anonKey:", ENV.supabaseAnonKey ? "set" : "MISSING");
+      res.status(401).json({ error: error?.message ?? "Invalid token" });
       return;
     }
 
