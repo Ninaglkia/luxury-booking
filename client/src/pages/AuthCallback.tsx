@@ -4,9 +4,9 @@ import { exchangeToken } from "./Login";
 import { Loader2 } from "lucide-react";
 
 // Questa pagina gestisce il ritorno da Google/Apple OAuth.
-// Supabase reindirizza qui con i token nell'URL hash (#access_token=...).
-// Leggiamo la sessione, la mandiamo al server per creare il cookie JWT, e
-// reindirizziamo a home.
+// Supabase v2 usa PKCE: il codice di autorizzazione arriva nei query params (?code=...).
+// Scambiamo il codice con una sessione, la mandiamo al server per creare il cookie JWT,
+// e reindirizziamo a home.
 
 export default function AuthCallback() {
   const [error, setError] = useState<string | null>(null);
@@ -14,19 +14,29 @@ export default function AuthCallback() {
   useEffect(() => {
     async function handleCallback() {
       try {
-        // getSession() legge automaticamente i token dall'URL hash
-        const { data, error } = await supabase.auth.getSession();
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get("code");
 
-        if (error) throw error;
+        let session;
 
-        if (!data.session) {
-          // Può capitare se il link è scaduto o già usato
+        if (code) {
+          // Flusso PKCE (Google OAuth, Apple OAuth)
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+          session = data.session;
+        } else {
+          // Fallback: flusso implicito con token nell'hash
+          const { data, error } = await supabase.auth.getSession();
+          if (error) throw error;
+          session = data.session;
+        }
+
+        if (!session) {
           setError("Sessione non valida. Riprova ad accedere.");
           return;
         }
 
-        await exchangeToken(data.session.access_token);
-        // exchangeToken fa già il redirect a "/"
+        await exchangeToken(session.access_token);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Errore durante il login");
       }
