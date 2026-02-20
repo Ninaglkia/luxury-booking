@@ -8,6 +8,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(
-  (supabaseUrl || '').trim(),
-  (supabaseAnonKey || '').trim()
+  (supabaseUrl || '').replace(/\s+/g, ''),
+  (supabaseAnonKey || '').replace(/\s+/g, '')
 );
