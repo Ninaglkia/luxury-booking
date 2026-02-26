@@ -1,12 +1,12 @@
 import { eq, and, gte, lte, desc, sql, inArray, count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { 
-  InsertUser, 
-  users, 
-  properties, 
-  propertyImages, 
-  amenities, 
+import {
+  InsertUser,
+  users,
+  properties,
+  propertyImages,
+  amenities,
   propertyAmenities,
   bookings,
   reviews,
@@ -29,9 +29,9 @@ import {
   Booking,
   Review,
   Message,
-  Notification
+  Notification,
 } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -39,10 +39,13 @@ export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
       const client = postgres(process.env.DATABASE_URL, {
-        ssl: 'require',
+        ssl: "require",
         max: 1,
         idle_timeout: 20,
         connect_timeout: 10,
+        // Required for Supabase PgBouncer (transaction mode, port 6543):
+        // extended query protocol (prepared statements) is not supported.
+        prepare: false,
       });
       _db = drizzle(client);
     } catch (error) {
@@ -71,7 +74,14 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     };
     const updateSet: Record<string, unknown> = {};
 
-    const textFields = ["name", "email", "loginMethod", "phone", "bio", "avatar"] as const;
+    const textFields = [
+      "name",
+      "email",
+      "loginMethod",
+      "phone",
+      "bio",
+      "avatar",
+    ] as const;
     type TextField = (typeof textFields)[number];
 
     const assignNullable = (field: TextField) => {
@@ -92,8 +102,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.role = user.role;
       updateSet.role = user.role;
     } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
+      values.role = "admin";
+      updateSet.role = "admin";
     }
 
     if (!values.lastSignedIn) {
@@ -119,7 +129,11 @@ export async function getUserByOpenId(openId: string): Promise<User | null> {
   if (!db) return null;
 
   try {
-    const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+    const result = await db
+      .select()
+      .from(users)
+      .where(eq(users.openId, openId))
+      .limit(1);
     return result[0] || null;
   } catch (error) {
     console.error("[Database] Failed to get user by openId:", error);
@@ -127,7 +141,10 @@ export async function getUserByOpenId(openId: string): Promise<User | null> {
   }
 }
 
-export async function updateUserRole(userId: number, role: 'guest' | 'host' | 'admin'): Promise<void> {
+export async function updateUserRole(
+  userId: number,
+  role: "guest" | "host" | "admin"
+): Promise<void> {
   const db = await getDb();
   if (!db) return;
 
@@ -146,7 +163,10 @@ export async function getApprovedProperties() {
   if (!db) return [];
 
   try {
-    return await db.select().from(properties).where(eq(properties.status, 'approved'));
+    return await db
+      .select()
+      .from(properties)
+      .where(eq(properties.status, "approved"));
   } catch (error) {
     console.error("[Database] Failed to get approved properties:", error);
     return [];
@@ -158,7 +178,11 @@ export async function getPropertyById(id: number): Promise<Property | null> {
   if (!db) return null;
 
   try {
-    const result = await db.select().from(properties).where(eq(properties.id, id)).limit(1);
+    const result = await db
+      .select()
+      .from(properties)
+      .where(eq(properties.id, id))
+      .limit(1);
     return result[0] || null;
   } catch (error) {
     console.error("[Database] Failed to get property by id:", error);
@@ -166,12 +190,16 @@ export async function getPropertyById(id: number): Promise<Property | null> {
   }
 }
 
-export async function getPropertyImages(propertyId: number): Promise<PropertyImage[]> {
+export async function getPropertyImages(
+  propertyId: number
+): Promise<PropertyImage[]> {
   const db = await getDb();
   if (!db) return [];
 
   try {
-    return await db.select().from(propertyImages)
+    return await db
+      .select()
+      .from(propertyImages)
       .where(eq(propertyImages.propertyId, propertyId))
       .orderBy(propertyImages.displayOrder);
   } catch (error) {
@@ -186,16 +214,17 @@ export async function getPropertyAmenities(propertyId: number) {
 
   try {
     // Join propertyAmenities with amenities table
-    const result = await db.select({
-      id: amenities.id,
-      name: amenities.name,
-      icon: amenities.icon,
-      category: amenities.category
-    })
-    .from(propertyAmenities)
-    .innerJoin(amenities, eq(propertyAmenities.amenityId, amenities.id))
-    .where(eq(propertyAmenities.propertyId, propertyId));
-    
+    const result = await db
+      .select({
+        id: amenities.id,
+        name: amenities.name,
+        icon: amenities.icon,
+        category: amenities.category,
+      })
+      .from(propertyAmenities)
+      .innerJoin(amenities, eq(propertyAmenities.amenityId, amenities.id))
+      .where(eq(propertyAmenities.propertyId, propertyId));
+
     return result;
   } catch (error) {
     console.error("[Database] Failed to get property amenities:", error);
@@ -203,16 +232,19 @@ export async function getPropertyAmenities(propertyId: number) {
   }
 }
 
-export async function getPropertyAverageRating(propertyId: number): Promise<number> {
+export async function getPropertyAverageRating(
+  propertyId: number
+): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
 
   try {
-    const result = await db.select({
-      avgRating: sql<number>`avg(${reviews.rating})`
-    })
-    .from(reviews)
-    .where(eq(reviews.propertyId, propertyId));
+    const result = await db
+      .select({
+        avgRating: sql<number>`avg(${reviews.rating})`,
+      })
+      .from(reviews)
+      .where(eq(reviews.propertyId, propertyId));
 
     return Number(result[0]?.avgRating) || 0;
   } catch (error) {
@@ -226,7 +258,10 @@ export async function getPropertiesByHost(hostId: number): Promise<Property[]> {
   if (!db) return [];
 
   try {
-    return await db.select().from(properties).where(eq(properties.hostId, hostId));
+    return await db
+      .select()
+      .from(properties)
+      .where(eq(properties.hostId, hostId));
   } catch (error) {
     console.error("[Database] Failed to get properties by host:", error);
     return [];
@@ -238,7 +273,10 @@ export async function createProperty(data: InsertProperty): Promise<number> {
   if (!db) throw new Error("Database not available");
 
   try {
-    const [result] = await db.insert(properties).values(data).returning({ id: properties.id });
+    const [result] = await db
+      .insert(properties)
+      .values(data)
+      .returning({ id: properties.id });
     return result.id;
   } catch (error) {
     console.error("[Database] Failed to create property:", error);
@@ -246,7 +284,9 @@ export async function createProperty(data: InsertProperty): Promise<number> {
   }
 }
 
-export async function addPropertyImage(data: InsertPropertyImage): Promise<void> {
+export async function addPropertyImage(
+  data: InsertPropertyImage
+): Promise<void> {
   const db = await getDb();
   if (!db) return;
 
@@ -258,7 +298,9 @@ export async function addPropertyImage(data: InsertPropertyImage): Promise<void>
   }
 }
 
-export async function addPropertyAmenity(data: InsertPropertyAmenity): Promise<void> {
+export async function addPropertyAmenity(
+  data: InsertPropertyAmenity
+): Promise<void> {
   const db = await getDb();
   if (!db) return;
 
@@ -287,7 +329,10 @@ export async function createAmenity(data: InsertAmenity): Promise<number> {
   if (!db) throw new Error("Database not available");
 
   try {
-    const [result] = await db.insert(amenities).values(data).returning({ id: amenities.id });
+    const [result] = await db
+      .insert(amenities)
+      .values(data)
+      .returning({ id: amenities.id });
     return result.id;
   } catch (error) {
     console.error("[Database] Failed to create amenity:", error);
@@ -300,7 +345,10 @@ export async function getPendingProperties(): Promise<Property[]> {
   if (!db) return [];
 
   try {
-    return await db.select().from(properties).where(eq(properties.status, 'pending'));
+    return await db
+      .select()
+      .from(properties)
+      .where(eq(properties.status, "pending"));
   } catch (error) {
     console.error("[Database] Failed to get pending properties:", error);
     return [];
@@ -308,15 +356,16 @@ export async function getPendingProperties(): Promise<Property[]> {
 }
 
 export async function updatePropertyStatus(
-  propertyId: number, 
-  status: 'approved' | 'rejected', 
+  propertyId: number,
+  status: "approved" | "rejected",
   rejectionReason?: string
 ): Promise<void> {
   const db = await getDb();
   if (!db) return;
 
   try {
-    await db.update(properties)
+    await db
+      .update(properties)
       .set({ status, rejectionReason })
       .where(eq(properties.id, propertyId));
   } catch (error) {
@@ -333,15 +382,16 @@ export async function getBookingsByGuest(guestId: number) {
 
   try {
     // Join with properties to get property details
-    const result = await db.select({
-      booking: bookings,
-      property: properties
-    })
-    .from(bookings)
-    .innerJoin(properties, eq(bookings.propertyId, properties.id))
-    .where(eq(bookings.guestId, guestId))
-    .orderBy(desc(bookings.createdAt));
-    
+    const result = await db
+      .select({
+        booking: bookings,
+        property: properties,
+      })
+      .from(bookings)
+      .innerJoin(properties, eq(bookings.propertyId, properties.id))
+      .where(eq(bookings.guestId, guestId))
+      .orderBy(desc(bookings.createdAt));
+
     return result.map(r => ({ ...r.booking, property: r.property }));
   } catch (error) {
     console.error("[Database] Failed to get bookings by guest:", error);
@@ -354,22 +404,23 @@ export async function getBookingsByHost(hostId: number) {
   if (!db) return [];
 
   try {
-    const result = await db.select({
-      booking: bookings,
-      property: properties,
-      guest: users
-    })
-    .from(bookings)
-    .innerJoin(properties, eq(bookings.propertyId, properties.id))
-    .innerJoin(users, eq(bookings.guestId, users.id))
-    .where(eq(bookings.hostId, hostId))
-    .orderBy(desc(bookings.createdAt));
-    
-    return result.map(r => ({ 
-      ...r.booking, 
+    const result = await db
+      .select({
+        booking: bookings,
+        property: properties,
+        guest: users,
+      })
+      .from(bookings)
+      .innerJoin(properties, eq(bookings.propertyId, properties.id))
+      .innerJoin(users, eq(bookings.guestId, users.id))
+      .where(eq(bookings.hostId, hostId))
+      .orderBy(desc(bookings.createdAt));
+
+    return result.map(r => ({
+      ...r.booking,
       property: r.property,
       guestName: r.guest.name || r.booking.guestName,
-      guestEmail: r.guest.email || r.booking.guestEmail
+      guestEmail: r.guest.email || r.booking.guestEmail,
     }));
   } catch (error) {
     console.error("[Database] Failed to get bookings by host:", error);
@@ -378,8 +429,8 @@ export async function getBookingsByHost(hostId: number) {
 }
 
 export async function checkPropertyAvailability(
-  propertyId: number, 
-  checkIn: Date, 
+  propertyId: number,
+  checkIn: Date,
   checkOut: Date
 ): Promise<boolean> {
   const db = await getDb();
@@ -388,26 +439,32 @@ export async function checkPropertyAvailability(
   try {
     // Check overlapping bookings
     // Existing booking overlaps if: (StartA <= EndB) and (EndA >= StartB)
-    const overlaps = await db.select({ count: count() })
+    const overlaps = await db
+      .select({ count: count() })
       .from(bookings)
-      .where(and(
-        eq(bookings.propertyId, propertyId),
-        inArray(bookings.status, ['confirmed', 'pending']),
-        lte(bookings.checkInDate, checkOut),
-        gte(bookings.checkOutDate, checkIn)
-      ));
-      
+      .where(
+        and(
+          eq(bookings.propertyId, propertyId),
+          inArray(bookings.status, ["confirmed", "pending"]),
+          lte(bookings.checkInDate, checkOut),
+          gte(bookings.checkOutDate, checkIn)
+        )
+      );
+
     if (overlaps[0].count > 0) return false;
 
     // Check availability calendar (blocked dates)
-    const blocked = await db.select({ count: count() })
+    const blocked = await db
+      .select({ count: count() })
       .from(availabilityCalendar)
-      .where(and(
-        eq(availabilityCalendar.propertyId, propertyId),
-        eq(availabilityCalendar.isAvailable, false),
-        gte(availabilityCalendar.date, checkIn),
-        lte(availabilityCalendar.date, checkOut)
-      ));
+      .where(
+        and(
+          eq(availabilityCalendar.propertyId, propertyId),
+          eq(availabilityCalendar.isAvailable, false),
+          gte(availabilityCalendar.date, checkIn),
+          lte(availabilityCalendar.date, checkOut)
+        )
+      );
 
     return blocked[0].count === 0;
   } catch (error) {
@@ -421,7 +478,10 @@ export async function createBooking(data: InsertBooking): Promise<number> {
   if (!db) throw new Error("Database not available");
 
   try {
-    const [result] = await db.insert(bookings).values(data).returning({ id: bookings.id });
+    const [result] = await db
+      .insert(bookings)
+      .values(data)
+      .returning({ id: bookings.id });
     return result.id;
   } catch (error) {
     console.error("[Database] Failed to create booking:", error);
@@ -434,7 +494,11 @@ export async function getBookingById(id: number): Promise<Booking | null> {
   if (!db) return null;
 
   try {
-    const result = await db.select().from(bookings).where(eq(bookings.id, id)).limit(1);
+    const result = await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.id, id))
+      .limit(1);
     return result[0] || null;
   } catch (error) {
     console.error("[Database] Failed to get booking by id:", error);
@@ -449,19 +513,20 @@ export async function getReviewsByProperty(propertyId: number) {
   if (!db) return [];
 
   try {
-    const result = await db.select({
-      review: reviews,
-      guest: users
-    })
-    .from(reviews)
-    .innerJoin(users, eq(reviews.guestId, users.id))
-    .where(eq(reviews.propertyId, propertyId))
-    .orderBy(desc(reviews.createdAt));
-    
+    const result = await db
+      .select({
+        review: reviews,
+        guest: users,
+      })
+      .from(reviews)
+      .innerJoin(users, eq(reviews.guestId, users.id))
+      .where(eq(reviews.propertyId, propertyId))
+      .orderBy(desc(reviews.createdAt));
+
     return result.map(r => ({
       ...r.review,
-      guestName: r.guest.name || 'Anonymous',
-      guestAvatar: r.guest.avatar
+      guestName: r.guest.name || "Anonymous",
+      guestAvatar: r.guest.avatar,
     }));
   } catch (error) {
     console.error("[Database] Failed to get reviews:", error);
@@ -469,18 +534,21 @@ export async function getReviewsByProperty(propertyId: number) {
   }
 }
 
-export async function hasUserReviewedBooking(bookingId: number, userId: number): Promise<boolean> {
+export async function hasUserReviewedBooking(
+  bookingId: number,
+  userId: number
+): Promise<boolean> {
   const db = await getDb();
   if (!db) return false;
 
   try {
-    const result = await db.select({ count: count() })
+    const result = await db
+      .select({ count: count() })
       .from(reviews)
-      .where(and(
-        eq(reviews.bookingId, bookingId),
-        eq(reviews.guestId, userId)
-      ));
-      
+      .where(
+        and(eq(reviews.bookingId, bookingId), eq(reviews.guestId, userId))
+      );
+
     return result[0].count > 0;
   } catch (error) {
     console.error("[Database] Failed to check review status:", error);
@@ -493,7 +561,10 @@ export async function createReview(data: InsertReview): Promise<number> {
   if (!db) throw new Error("Database not available");
 
   try {
-    const [result] = await db.insert(reviews).values(data).returning({ id: reviews.id });
+    const [result] = await db
+      .insert(reviews)
+      .values(data)
+      .returning({ id: reviews.id });
     return result.id;
   } catch (error) {
     console.error("[Database] Failed to create review:", error);
@@ -503,12 +574,16 @@ export async function createReview(data: InsertReview): Promise<number> {
 
 // ============ MESSAGING OPERATIONS ============
 
-export async function getConversationMessages(conversationId: string): Promise<Message[]> {
+export async function getConversationMessages(
+  conversationId: string
+): Promise<Message[]> {
   const db = await getDb();
   if (!db) return [];
 
   try {
-    return await db.select().from(messages)
+    return await db
+      .select()
+      .from(messages)
       .where(eq(messages.conversationId, conversationId))
       .orderBy(messages.createdAt);
   } catch (error) {
@@ -522,7 +597,10 @@ export async function createMessage(data: InsertMessage): Promise<number> {
   if (!db) throw new Error("Database not available");
 
   try {
-    const [result] = await db.insert(messages).values(data).returning({ id: messages.id });
+    const [result] = await db
+      .insert(messages)
+      .values(data)
+      .returning({ id: messages.id });
     return result.id;
   } catch (error) {
     console.error("[Database] Failed to create message:", error);
@@ -530,18 +608,24 @@ export async function createMessage(data: InsertMessage): Promise<number> {
   }
 }
 
-export async function markMessagesAsRead(conversationId: string, userId: number): Promise<void> {
+export async function markMessagesAsRead(
+  conversationId: string,
+  userId: number
+): Promise<void> {
   const db = await getDb();
   if (!db) return;
 
   try {
-    await db.update(messages)
+    await db
+      .update(messages)
       .set({ isRead: true })
-      .where(and(
-        eq(messages.conversationId, conversationId),
-        eq(messages.receiverId, userId),
-        eq(messages.isRead, false)
-      ));
+      .where(
+        and(
+          eq(messages.conversationId, conversationId),
+          eq(messages.receiverId, userId),
+          eq(messages.isRead, false)
+        )
+      );
   } catch (error) {
     console.error("[Database] Failed to mark messages as read:", error);
     throw error;
@@ -553,13 +637,11 @@ export async function getUnreadMessageCount(userId: number): Promise<number> {
   if (!db) return 0;
 
   try {
-    const result = await db.select({ count: count() })
+    const result = await db
+      .select({ count: count() })
       .from(messages)
-      .where(and(
-        eq(messages.receiverId, userId),
-        eq(messages.isRead, false)
-      ));
-      
+      .where(and(eq(messages.receiverId, userId), eq(messages.isRead, false)));
+
     return result[0].count;
   } catch (error) {
     console.error("[Database] Failed to get unread message count:", error);
@@ -569,12 +651,17 @@ export async function getUnreadMessageCount(userId: number): Promise<number> {
 
 // ============ NOTIFICATION OPERATIONS ============
 
-export async function createNotification(data: InsertNotification): Promise<number> {
+export async function createNotification(
+  data: InsertNotification
+): Promise<number> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
   try {
-    const [result] = await db.insert(notifications).values(data).returning({ id: notifications.id });
+    const [result] = await db
+      .insert(notifications)
+      .values(data)
+      .returning({ id: notifications.id });
     return result.id;
   } catch (error) {
     console.error("[Database] Failed to create notification:", error);
@@ -582,12 +669,16 @@ export async function createNotification(data: InsertNotification): Promise<numb
   }
 }
 
-export async function getUserNotifications(userId: number): Promise<Notification[]> {
+export async function getUserNotifications(
+  userId: number
+): Promise<Notification[]> {
   const db = await getDb();
   if (!db) return [];
 
   try {
-    return await db.select().from(notifications)
+    return await db
+      .select()
+      .from(notifications)
       .where(eq(notifications.userId, userId))
       .orderBy(desc(notifications.createdAt));
   } catch (error) {
@@ -601,7 +692,8 @@ export async function markNotificationAsRead(id: number): Promise<void> {
   if (!db) return;
 
   try {
-    await db.update(notifications)
+    await db
+      .update(notifications)
       .set({ isRead: true })
       .where(eq(notifications.id, id));
   } catch (error) {
@@ -610,18 +702,20 @@ export async function markNotificationAsRead(id: number): Promise<void> {
   }
 }
 
-export async function getUnreadNotificationCount(userId: number): Promise<number> {
+export async function getUnreadNotificationCount(
+  userId: number
+): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
 
   try {
-    const result = await db.select({ count: count() })
+    const result = await db
+      .select({ count: count() })
       .from(notifications)
-      .where(and(
-        eq(notifications.userId, userId),
-        eq(notifications.isRead, false)
-      ));
-      
+      .where(
+        and(eq(notifications.userId, userId), eq(notifications.isRead, false))
+      );
+
     return result[0].count;
   } catch (error) {
     console.error("[Database] Failed to get unread notification count:", error);
