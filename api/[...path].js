@@ -46,8 +46,9 @@ var ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
-  supabaseUrl: process.env.VITE_SUPABASE_URL ?? "",
-  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? ""
+  supabaseUrl: (process.env.VITE_SUPABASE_URL ?? "").replace(/\s+/g, ""),
+  supabaseAnonKey: (process.env.VITE_SUPABASE_ANON_KEY ?? "").replace(/\s+/g, ""),
+  supabaseServiceRoleKey: (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").replace(/\s+/g, "")
 };
 
 // server/_core/notification.ts
@@ -381,7 +382,12 @@ var _db = null;
 async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      const client = postgres(process.env.DATABASE_URL);
+      const client = postgres(process.env.DATABASE_URL, {
+        ssl: "require",
+        max: 1,
+        idle_timeout: 20,
+        connect_timeout: 10
+      });
       _db = drizzle(client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
@@ -396,8 +402,7 @@ async function upsertUser(user) {
   }
   const db = await getDb();
   if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
-    return;
+    throw new Error("Database not available");
   }
   try {
     const values = {
@@ -436,6 +441,7 @@ async function upsertUser(user) {
     });
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
+    throw error;
   }
 }
 async function getUserByOpenId(openId) {
@@ -1736,13 +1742,13 @@ var SDKServer = class {
         algorithms: ["HS256"]
       });
       const { openId, appId, name } = payload;
-      if (!isNonEmptyString2(openId) || !isNonEmptyString2(appId) || !isNonEmptyString2(name)) {
+      if (!isNonEmptyString2(openId) || !isNonEmptyString2(name)) {
         console.warn("[Auth] Session payload missing required fields");
         return null;
       }
       return {
         openId,
-        appId,
+        appId: typeof appId === "string" ? appId : "",
         name
       };
     } catch (error) {
@@ -1778,29 +1784,11 @@ var SDKServer = class {
     }
     const sessionUserId = session.openId;
     const signedInAt = /* @__PURE__ */ new Date();
-    let user = await getUserByOpenId(sessionUserId);
-    if (!user) {
-      try {
-        const userInfo = await this.getUserInfoWithJwt(sessionCookie ?? "");
-        await upsertUser({
-          openId: userInfo.openId,
-          name: userInfo.name || null,
-          email: userInfo.email ?? null,
-          loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
-          lastSignedIn: signedInAt
-        });
-        user = await getUserByOpenId(userInfo.openId);
-      } catch (error) {
-        console.error("[Auth] Failed to sync user from OAuth:", error);
-        throw ForbiddenError("Failed to sync user info");
-      }
-    }
+    const user = await getUserByOpenId(sessionUserId);
     if (!user) {
       throw ForbiddenError("User not found");
     }
-    await upsertUser({
-      openId: user.openId,
-      lastSignedIn: signedInAt
+    upsertUser({ openId: user.openId, lastSignedIn: signedInAt }).catch(() => {
     });
     return user;
   }
@@ -1826,10 +1814,15 @@ async function createContext(opts) {
 import { Router } from "express";
 import { createClient } from "@supabase/supabase-js";
 function getSupabaseAdmin() {
-  if (!ENV.supabaseUrl || !ENV.supabaseServiceRoleKey) {
-    throw new Error("Supabase server config missing: set VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY");
+  if (!ENV.supabaseUrl) {
+    throw new Error("VITE_SUPABASE_URL is not set");
   }
-  return createClient(ENV.supabaseUrl, ENV.supabaseServiceRoleKey, {
+  const key = ENV.supabaseServiceRoleKey || ENV.supabaseAnonKey;
+  if (!key) {
+    throw new Error("Neither SUPABASE_SERVICE_ROLE_KEY nor VITE_SUPABASE_ANON_KEY is set");
+  }
+  console.log("[Auth] Supabase client using key type:", ENV.supabaseServiceRoleKey ? "service_role" : "anon");
+  return createClient(ENV.supabaseUrl, key, {
     auth: { autoRefreshToken: false, persistSession: false }
   });
 }
@@ -1866,8 +1859,11 @@ oauthRouter.post("/auth/supabase-session", async (req, res) => {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase.auth.getUser(access_token);
     if (error || !data.user) {
-      console.error("[Auth] Invalid Supabase token", error);
-      res.status(401).json({ error: "Invalid token" });
+      console.error("[Auth] Invalid Supabase token. Error:", error?.message ?? "no user returned");
+      console.error("[Auth] supabaseUrl:", ENV.supabaseUrl ? "set" : "MISSING");
+      console.error("[Auth] serviceRoleKey:", ENV.supabaseServiceRoleKey ? "set" : "MISSING");
+      console.error("[Auth] anonKey:", ENV.supabaseAnonKey ? "set" : "MISSING");
+      res.status(401).json({ error: error?.message ?? "Invalid token" });
       return;
     }
     const supabaseUser = data.user;
@@ -1882,6 +1878,12 @@ oauthRouter.post("/auth/supabase-session", async (req, res) => {
       loginMethod,
       lastSignedIn: /* @__PURE__ */ new Date()
     });
+    const savedUser = await getUserByOpenId(openId);
+    if (!savedUser) {
+      console.error("[Auth] User not found in DB after upsert \u2014 database connection may be failing");
+      res.status(500).json({ error: "Database error: user could not be created" });
+      return;
+    }
     const sessionToken = await sdk.createSessionToken(openId, {
       name,
       expiresInMs: ONE_YEAR_MS

@@ -93,6 +93,14 @@ oauthRouter.post("/auth/supabase-session", async (req: Request, res: Response) =
       lastSignedIn: new Date(),
     });
 
+    // Verify user was actually persisted in DB
+    const savedUser = await db.getUserByOpenId(openId);
+    if (!savedUser) {
+      console.error("[Auth] User not found in DB after upsert — database connection may be failing");
+      res.status(500).json({ error: "Database error: user could not be created" });
+      return;
+    }
+
     const sessionToken = await sdk.createSessionToken(openId, {
       name,
       expiresInMs: ONE_YEAR_MS,
