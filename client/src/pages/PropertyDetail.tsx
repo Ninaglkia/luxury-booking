@@ -4,7 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -24,7 +29,7 @@ import {
   ArrowLeft,
   Sparkles,
   Check,
-  X
+  X,
 } from "lucide-react";
 import { Link, useParams, useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
@@ -43,24 +48,31 @@ export default function PropertyDetail() {
   const [guestPhone, setGuestPhone] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
 
-  const { data: property, isLoading } = trpc.properties.getById.useQuery({ id: propertyId });
+  const { data: property, isLoading } = trpc.properties.getById.useQuery({
+    id: propertyId,
+  });
   const { data: reviews } = trpc.reviews.getByProperty.useQuery({ propertyId });
 
   const createBooking = trpc.bookings.create.useMutation({
     onSuccess: () => {
-      toast.success("Prenotazione confermata! Riceverai una email di conferma.");
+      toast.success(
+        "Prenotazione confermata! Riceverai una email di conferma."
+      );
       setShowBooking(false);
       setDateRange(undefined);
       navigate("/dashboard");
     },
-    onError: (err) => {
+    onError: err => {
       toast.error(err.message || "Errore durante la prenotazione. Riprova.");
     },
   });
 
   const nights =
     dateRange?.from && dateRange?.to
-      ? Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24))
+      ? Math.ceil(
+          (dateRange.to.getTime() - dateRange.from.getTime()) /
+            (1000 * 60 * 60 * 24)
+        )
       : 0;
   const totalPrice = nights * (property?.pricePerNight || 0);
 
@@ -104,7 +116,9 @@ export default function PropertyDetail() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-serif font-semibold mb-4">Villa non trovata</h2>
+          <h2 className="text-2xl font-serif font-semibold mb-4">
+            Villa non trovata
+          </h2>
           <Link href="/properties">
             <Button>Torna alle Ville</Button>
           </Link>
@@ -140,9 +154,7 @@ export default function PropertyDetail() {
               </Link>
               {user && (
                 <Link href="/profile">
-                  <Button variant="outline">
-                    {user.name || 'Profilo'}
-                  </Button>
+                  <Button variant="outline">{user.name || "Profilo"}</Button>
                 </Link>
               )}
             </div>
@@ -155,16 +167,22 @@ export default function PropertyDetail() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl overflow-hidden">
           <div className="relative h-[400px] md:h-[600px]">
             <img
-              src={property.images?.[0]?.imageUrl || `https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1200&h=800&fit=crop&q=80`}
+              src={
+                property.images?.[0]?.imageUrl ||
+                `https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1200&h=800&fit=crop&q=80`
+              }
               alt={property.title}
               className="w-full h-full object-cover"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            {[1, 2, 3, 4].map((i) => (
+            {[1, 2, 3, 4].map(i => (
               <div key={i} className="relative h-[190px] md:h-[290px]">
                 <img
-                  src={property.images?.[i]?.imageUrl || `https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=600&h=400&fit=crop&q=80`}
+                  src={
+                    property.images?.[i]?.imageUrl ||
+                    `https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=600&h=400&fit=crop&q=80`
+                  }
                   alt={`${property.title} - ${i}`}
                   className="w-full h-full object-cover rounded-lg"
                 />
@@ -176,7 +194,10 @@ export default function PropertyDetail() {
 
       {/* Booking Modal */}
       <Dialog open={showBooking} onOpenChange={setShowBooking}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="max-w-2xl max-h-[90vh] overflow-y-auto"
+          onOpenAutoFocus={e => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle className="text-2xl font-serif">
               Prenota — {property?.title}
@@ -202,10 +223,14 @@ export default function PropertyDetail() {
               {dateRange?.from && dateRange?.to && (
                 <div className="flex justify-between mt-3 text-sm text-muted-foreground bg-muted/40 rounded-lg px-4 py-2">
                   <span>
-                    Check-in: <strong>{dateRange.from.toLocaleDateString("it-IT")}</strong>
+                    Check-in:{" "}
+                    <strong>
+                      {dateRange.from.toLocaleDateString("it-IT")}
+                    </strong>
                   </span>
                   <span>
-                    Check-out: <strong>{dateRange.to.toLocaleDateString("it-IT")}</strong>
+                    Check-out:{" "}
+                    <strong>{dateRange.to.toLocaleDateString("it-IT")}</strong>
                   </span>
                   <span>
                     <strong>{nights}</strong> {nights === 1 ? "notte" : "notti"}
@@ -228,11 +253,15 @@ export default function PropertyDetail() {
                   >
                     <X className="w-4 h-4" />
                   </Button>
-                  <span className="w-8 text-center font-semibold">{guests}</span>
+                  <span className="w-8 text-center font-semibold">
+                    {guests}
+                  </span>
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => setGuests(g => Math.min(property?.maxGuests || 99, g + 1))}
+                    onClick={() =>
+                      setGuests(g => Math.min(property?.maxGuests || 99, g + 1))
+                    }
                   >
                     <Users className="w-4 h-4" />
                   </Button>
@@ -293,7 +322,10 @@ export default function PropertyDetail() {
             {nights > 0 && (
               <div className="space-y-2 bg-muted/30 rounded-xl px-4 py-3">
                 <div className="flex justify-between text-sm">
-                  <span>€{property?.pricePerNight} × {nights} {nights === 1 ? "notte" : "notti"}</span>
+                  <span>
+                    €{property?.pricePerNight} × {nights}{" "}
+                    {nights === 1 ? "notte" : "notti"}
+                  </span>
                   <span>€{totalPrice}</span>
                 </div>
                 <Separator />
@@ -301,7 +333,9 @@ export default function PropertyDetail() {
                   <span>Totale</span>
                   <span className="text-primary">€{totalPrice}</span>
                 </div>
-                <p className="text-xs text-muted-foreground">Non ti verrà addebitato nulla ora</p>
+                <p className="text-xs text-muted-foreground">
+                  Non ti verrà addebitato nulla ora
+                </p>
               </div>
             )}
 
@@ -309,9 +343,13 @@ export default function PropertyDetail() {
               className="w-full shadow-luxury gold-shimmer"
               size="lg"
               onClick={handleConfirmBooking}
-              disabled={createBooking.isPending || !dateRange?.from || !dateRange?.to}
+              disabled={
+                createBooking.isPending || !dateRange?.from || !dateRange?.to
+              }
             >
-              {createBooking.isPending ? "Prenotazione in corso..." : "Conferma Prenotazione"}
+              {createBooking.isPending
+                ? "Prenotazione in corso..."
+                : "Conferma Prenotazione"}
             </Button>
           </div>
         </DialogContent>
@@ -331,14 +369,20 @@ export default function PropertyDetail() {
                   </h1>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <MapPin className="w-5 h-5" />
-                    <span className="text-lg">{property.city}, {property.country}</span>
+                    <span className="text-lg">
+                      {property.city}, {property.country}
+                    </span>
                   </div>
                 </div>
                 {totalReviews > 0 && (
                   <div className="flex items-center gap-2">
                     <Star className="w-5 h-5 text-primary fill-current" />
-                    <span className="text-xl font-semibold">{avgRating.toFixed(1)}</span>
-                    <span className="text-muted-foreground">({totalReviews} recensioni)</span>
+                    <span className="text-xl font-semibold">
+                      {avgRating.toFixed(1)}
+                    </span>
+                    <span className="text-muted-foreground">
+                      ({totalReviews} recensioni)
+                    </span>
                   </div>
                 )}
               </div>
@@ -369,7 +413,9 @@ export default function PropertyDetail() {
 
             {/* Description */}
             <div>
-              <h2 className="text-2xl font-serif font-semibold mb-4">Descrizione</h2>
+              <h2 className="text-2xl font-serif font-semibold mb-4">
+                Descrizione
+              </h2>
               <p className="text-lg text-muted-foreground leading-relaxed whitespace-pre-line">
                 {property.description}
               </p>
@@ -381,9 +427,11 @@ export default function PropertyDetail() {
             {property.amenities && property.amenities.length > 0 && (
               <>
                 <div>
-                  <h2 className="text-2xl font-serif font-semibold mb-6">Servizi e Comfort</h2>
+                  <h2 className="text-2xl font-serif font-semibold mb-6">
+                    Servizi e Comfort
+                  </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {property.amenities.map((amenity) => (
+                    {property.amenities.map(amenity => (
                       <div key={amenity.id} className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                           <Check className="w-5 h-5 text-primary" />
@@ -400,9 +448,11 @@ export default function PropertyDetail() {
             {/* Reviews */}
             {reviews && reviews.length > 0 && (
               <div>
-                <h2 className="text-2xl font-serif font-semibold mb-6">Recensioni</h2>
+                <h2 className="text-2xl font-serif font-semibold mb-6">
+                  Recensioni
+                </h2>
                 <div className="space-y-6">
-                  {reviews.slice(0, 3).map((review) => (
+                  {reviews.slice(0, 3).map(review => (
                     <Card key={review.id}>
                       <CardContent className="pt-6">
                         <div className="flex items-center gap-2 mb-3">
@@ -412,17 +462,21 @@ export default function PropertyDetail() {
                                 key={i}
                                 className={`w-4 h-4 ${
                                   i < review.rating
-                                    ? 'text-primary fill-current'
-                                    : 'text-muted-foreground'
+                                    ? "text-primary fill-current"
+                                    : "text-muted-foreground"
                                 }`}
                               />
                             ))}
                           </div>
                           <span className="text-sm text-muted-foreground">
-                            {new Date(review.createdAt).toLocaleDateString('it-IT')}
+                            {new Date(review.createdAt).toLocaleDateString(
+                              "it-IT"
+                            )}
                           </span>
                         </div>
-                        <p className="text-muted-foreground">{review.comment}</p>
+                        <p className="text-muted-foreground">
+                          {review.comment}
+                        </p>
                       </CardContent>
                     </Card>
                   ))}
@@ -436,8 +490,12 @@ export default function PropertyDetail() {
             <Card className="sticky top-24 shadow-luxury-lg">
               <CardHeader>
                 <CardTitle className="flex items-baseline gap-2">
-                  <span className="text-4xl font-bold text-primary">€{property.pricePerNight}</span>
-                  <span className="text-lg text-muted-foreground">per notte</span>
+                  <span className="text-4xl font-bold text-primary">
+                    €{property.pricePerNight}
+                  </span>
+                  <span className="text-lg text-muted-foreground">
+                    per notte
+                  </span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -451,8 +509,13 @@ export default function PropertyDetail() {
                     <span className="font-medium">{property.checkOutTime}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Soggiorno minimo</span>
-                    <span className="font-medium">{property.minimumStay} {property.minimumStay === 1 ? 'notte' : 'notti'}</span>
+                    <span className="text-muted-foreground">
+                      Soggiorno minimo
+                    </span>
+                    <span className="font-medium">
+                      {property.minimumStay}{" "}
+                      {property.minimumStay === 1 ? "notte" : "notti"}
+                    </span>
                   </div>
                 </div>
 
@@ -476,7 +539,10 @@ export default function PropertyDetail() {
                 ) : (
                   <>
                     <a href={getLoginUrl()} className="block">
-                      <Button className="w-full shadow-luxury gold-shimmer" size="lg">
+                      <Button
+                        className="w-full shadow-luxury gold-shimmer"
+                        size="lg"
+                      >
                         Accedi per Prenotare
                       </Button>
                     </a>

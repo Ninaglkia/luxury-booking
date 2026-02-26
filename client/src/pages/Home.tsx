@@ -66,7 +66,8 @@ const CATEGORIES = [
 ];
 
 export default function Home() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [, navigate] = useLocation();
   const [mode, setMode] = useState<Mode>("travel");
   const [destination, setDestination] = useState("");
@@ -269,8 +270,11 @@ export default function Home() {
                 <Globe className="w-4 h-4" />
               </Button>
               {isAuthenticated ? (
-                <Link href="/dashboard">
-                  <button className="flex items-center gap-2 border border-slate-300 rounded-full px-3 py-1.5 hover:shadow-md transition-shadow">
+                <div className="relative">
+                  <button
+                    onClick={() => setUserMenuOpen((v) => !v)}
+                    className="flex items-center gap-2 border border-slate-300 rounded-full px-3 py-1.5 hover:shadow-md transition-shadow"
+                  >
                     <div className="w-6 h-6 rounded-full bg-rose-500 text-white flex items-center justify-center text-xs font-bold">
                       {user?.name?.[0]?.toUpperCase() ?? "U"}
                     </div>
@@ -278,7 +282,24 @@ export default function Home() {
                       {user?.name?.split(" ")[0]}
                     </span>
                   </button>
-                </Link>
+                  {userMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setUserMenuOpen(false)} />
+                      <div className="absolute right-0 mt-2 w-44 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden">
+                        <Link href="/dashboard" onClick={() => setUserMenuOpen(false)}>
+                          <div className="px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">Dashboard</div>
+                        </Link>
+                        <div className="border-t border-slate-100" />
+                        <button
+                          className="w-full text-left px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 cursor-pointer"
+                          onClick={async () => { setUserMenuOpen(false); await logout(); }}
+                        >
+                          Esci
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               ) : (
                 <a href={getLoginUrl()}>
                   <button className="flex items-center gap-2 border border-slate-300 rounded-full px-3 py-1.5 hover:shadow-md transition-shadow">
