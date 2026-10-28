@@ -4,6 +4,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --font-sans: 'DM Sans', sans-serif;
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -43,8 +45,8 @@
 }
 
 :root {
-  /* Luxury Gold & Navy Theme */
-  --primary: oklch(55% 0.15 75); /* Luxury Gold */
+  /* Warm paper and olive, shared with the editorial home. */
+  --primary: #4c583e;
   --primary-foreground: oklch(100% 0 0);
   --sidebar-primary: oklch(55% 0.15 75);
   --sidebar-primary-foreground: oklch(100% 0 0);
@@ -53,24 +55,24 @@
   --chart-3: oklch(45% 0.12 75);
   --chart-4: oklch(35% 0.10 75);
   --chart-5: oklch(25% 0.08 75);
-  --radius: 0.75rem;
-  --background: oklch(98% 0.01 120);
-  --foreground: oklch(20% 0.02 260);
+  --radius: 0.4rem;
+  --background: #f8f7f2;
+  --foreground: #30362b;
   --card: oklch(100% 0 0);
-  --card-foreground: oklch(20% 0.02 260);
+  --card-foreground: #30362b;
   --popover: oklch(100% 0 0);
-  --popover-foreground: oklch(20% 0.02 260);
-  --secondary: oklch(25% 0.05 260); /* Deep Navy */
+  --popover-foreground: #30362b;
+  --secondary: #303c2b;
   --secondary-foreground: oklch(98% 0.01 120);
-  --muted: oklch(95% 0.01 120);
-  --muted-foreground: oklch(45% 0.02 260);
-  --accent: oklch(92% 0.02 75); /* Light Gold Accent */
-  --accent-foreground: oklch(25% 0.05 260);
+  --muted: #eff0e7;
+  --muted-foreground: #707565;
+  --accent: #e9ecdf;
+  --accent-foreground: #303c2b;
   --destructive: oklch(55% 0.22 25);
   --destructive-foreground: oklch(98% 0.01 120);
-  --border: oklch(88% 0.02 120);
-  --input: oklch(88% 0.02 120);
-  --ring: oklch(55% 0.15 75);
+  --border: #dedfd4;
+  --input: #d1d5c4;
+  --ring: #7e8c65;
   --sidebar: oklch(100% 0 0);
   --sidebar-foreground: oklch(20% 0.02 260);
   --sidebar-accent: oklch(92% 0.02 75);
@@ -246,10 +248,7 @@
 
   /* Text gradient */
   .text-gradient-gold {
-    background: linear-gradient(135deg, oklch(55% 0.15 75) 0%, oklch(65% 0.18 60) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--primary);
   }
 
   /* Glass effect */
@@ -320,4 +319,8 @@
 
 .animate-scale-in {
   animation: scaleIn 0.4s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
 }

@@ -29,7 +29,7 @@ export async function storagePut(
   const blob =
     typeof data === "string"
       ? new Blob([data], { type: contentType })
-      : new Blob([data as Uint8Array], { type: contentType });
+      : new Blob([new Uint8Array(data)], { type: contentType });
 
   const { error } = await storage.upload(key, blob, {
     contentType,

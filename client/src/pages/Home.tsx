@@ -1,892 +1,497 @@
-import { useState, useRef, useEffect } from "react";
-import { useAuth } from "@/_core/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Separator } from "@/components/ui/separator";
-import { getLoginUrl } from "@/const";
-import { trpc } from "@/lib/trpc";
-import { toast } from "sonner";
+import { useState } from "react";
+import { Link } from "wouter";
 import {
+  ArrowDown,
   ArrowRight,
+  ArrowUpRight,
   BedDouble,
-  CalendarDays,
+  House,
   MapPin,
-  Search,
-  Star,
+  Menu,
+  MessageCircle,
   Users,
-  ChevronDown,
-  Minus,
-  Plus,
-  Globe,
-  Home as HomeIcon,
-  PawPrint,
-  Baby,
-  User,
-  Heart,
-  Sparkles,
-  Navigation,
-  TrendingUp,
+  X,
 } from "lucide-react";
-import { Link, useLocation } from "wouter";
-import type { DateRange } from "react-day-picker";
-import { format, isSameDay } from "date-fns";
-import { it } from "date-fns/locale";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
+import StaySearch from "@/components/stay/StaySearch";
+import "@/styles/stay.css";
 
-type Mode = "travel" | "host";
-
-// Photon API (OpenStreetMap geocoder) — free, no API key
-type PhotonFeature = {
-  geometry: { coordinates: [number, number] }; // [lng, lat]
-  properties: { name: string; country?: string; state?: string; city?: string; type?: string };
-};
-
-const POPULAR_DESTINATIONS = [
-  { label: "Roma",     sublabel: "Arte, storia e dolce vita",  icon: "🏛️", lat: 41.9028, lng: 12.4964 },
-  { label: "Milano",   sublabel: "Moda, design e aperitivo",   icon: "🏙️", lat: 45.4642, lng:  9.1900 },
-  { label: "Firenze",  sublabel: "Rinascimento e Toscana",     icon: "⛪",  lat: 43.7696, lng: 11.2558 },
-  { label: "Amalfi",   sublabel: "Costa mozzafiato",           icon: "🌊", lat: 40.6339, lng: 14.6027 },
-  { label: "Venezia",  sublabel: "La Serenissima",             icon: "🚣", lat: 45.4408, lng: 12.3155 },
-  { label: "Sicilia",  sublabel: "Sole, mare e barocco",       icon: "🏝️", lat: 37.5999, lng: 14.0154 },
-  { label: "Sardegna", sublabel: "Acque cristalline",          icon: "🐚", lat: 40.1209, lng:  9.0129 },
-  { label: "Napoli",   sublabel: "Pizza, sole e Vesuvio",      icon: "🍕", lat: 40.8518, lng: 14.2681 },
+const destinations = [
+  {
+    name: "La costa",
+    detail: "Il mare come orizzonte",
+    query: "Amalfi",
+    image: "/images/stay-hero.jpg",
+    position: "center",
+  },
+  {
+    name: "La campagna",
+    detail: "Il lusso di rallentare",
+    query: "Toscana",
+    image: "/images/stay-country.jpg",
+    position: "center",
+  },
+  {
+    name: "Le isole",
+    detail: "Un mondo tutto tuo",
+    query: "Sardegna",
+    image: "/images/stay-island.jpg",
+    position: "center",
+  },
 ];
-
-const CATEGORIES = [
-  { label: "Villa con piscina", icon: "🏊", value: "piscina" },
-  { label: "Vista mare", icon: "🌊", value: "mare" },
-  { label: "Campagna", icon: "🌿", value: "campagna" },
-  { label: "Lago", icon: "🏔️", value: "lago" },
-  { label: "Lusso", icon: "✨", value: "lusso" },
-  { label: "Design", icon: "🎨", value: "design" },
-  { label: "Montagna", icon: "⛰️", value: "montagna" },
-  { label: "Isola", icon: "🏝️", value: "isola" },
-];
+const filters = [
+  "Tutte le ville",
+  "Per due",
+  "In famiglia",
+  "Insieme, in grande",
+] as const;
+type Filter = (typeof filters)[number];
 
 export default function Home() {
   const { user, isAuthenticated, logout } = useAuth();
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [, navigate] = useLocation();
-  const [mode, setMode] = useState<Mode>("travel");
-  const [destination, setDestination] = useState("");
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [adults, setAdults] = useState(2);
-  const [children, setChildren] = useState(0);
-  const [pets, setPets] = useState(0);
-  const [dateOpen, setDateOpen] = useState(false);
-  const [guestsOpen, setGuestsOpen] = useState(false);
-  const [activeSearchField, setActiveSearchField] = useState<"destination" | "checkin" | "checkout" | "guests" | null>(null);
-  const [showDestSuggestions, setShowDestSuggestions] = useState(false);
-  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [photonResults, setPhotonResults] = useState<PhotonFeature[]>([]);
-  const [isFetching, setIsFetching] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const searchRef = useRef<HTMLDivElement>(null);
-  // Saves the complete date range before the user starts re-selecting
-  const savedDateRangeRef = useRef<DateRange | undefined>(undefined);
-  const rangeCompletedRef = useRef(false); // true when user intentionally completed or cancelled
-
-  const { data: properties, isLoading } = trpc.properties.list.useQuery(undefined, { retry: 1 });
-  const featured = properties?.slice(0, 8) ?? [];
-  const totalGuests = adults + children;
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setActiveSearchField(null);
-        setShowDestSuggestions(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-
-  const handleNearby = () => {
-    if (!navigator.geolocation) {
-      toast.error("Il tuo browser non supporta la geolocalizzazione");
-      return;
-    }
-    setDestination("Nelle vicinanze...");
-    setShowDestSuggestions(false);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const params = new URLSearchParams();
-        params.set("lat", String(pos.coords.latitude));
-        params.set("lng", String(pos.coords.longitude));
-        params.set("adults", String(adults));
-        params.set("children", String(children));
-        params.set("pets", String(pets));
-        navigate(`/search?${params.toString()}`);
-      },
-      (err) => {
-        setDestination("");
-        if (err.code === err.PERMISSION_DENIED) {
-          toast.error("Permesso di localizzazione negato. Abilitalo nelle impostazioni del browser.");
-        } else {
-          toast.error("Impossibile ottenere la tua posizione. Riprova.");
-        }
-      },
-      { timeout: 10000, enableHighAccuracy: false }
-    );
-  };
-
-  // Fetch autocomplete suggestions from Photon (OpenStreetMap geocoder)
-  const fetchSuggestions = (query: string) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (query.length < 2) { setPhotonResults([]); return; }
-    debounceRef.current = setTimeout(async () => {
-      setIsFetching(true);
-      try {
-        const res = await fetch(
-          `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=6&lang=it`
-        );
-        const data = await res.json();
-        setPhotonResults((data.features ?? []) as PhotonFeature[]);
-      } catch {
-        setPhotonResults([]);
-      } finally {
-        setIsFetching(false);
-      }
-    }, 300);
-  };
-
-  const handleDestinationChange = (value: string) => {
-    setDestination(value);
-    setSelectedCoords(null); // clear coords when user edits manually
-    setShowDestSuggestions(true);
-    fetchSuggestions(value);
-  };
-
-  // Select from popular destinations (pre-baked coords)
-  const selectDestination = (dest: typeof POPULAR_DESTINATIONS[0]) => {
-    setDestination(dest.label);
-    setSelectedCoords({ lat: dest.lat, lng: dest.lng });
-    setPhotonResults([]);
-    setShowDestSuggestions(false);
-    setActiveSearchField("checkin");
-    setDateOpen(true);
-  };
-
-  // Select from Photon API results
-  const selectPhotonResult = (feature: PhotonFeature) => {
-    const [lng, lat] = feature.geometry.coordinates;
-    const { name, state, country } = feature.properties;
-    const label = [name, state, country].filter(Boolean).slice(0, 2).join(", ");
-    setDestination(label);
-    setSelectedCoords({ lat, lng });
-    setPhotonResults([]);
-    setShowDestSuggestions(false);
-    setActiveSearchField("checkin");
-    setDateOpen(true);
-  };
-
-  const handleSearch = () => {
-    if (!destination.trim()) return;
-    const params = new URLSearchParams();
-    params.set("city", destination);
-    // Include coordinates so SearchResults can center the map precisely
-    if (selectedCoords) {
-      params.set("lat", String(selectedCoords.lat));
-      params.set("lng", String(selectedCoords.lng));
-    }
-    if (dateRange?.from) params.set("checkin", format(dateRange.from, "yyyy-MM-dd"));
-    if (dateRange?.to) params.set("checkout", format(dateRange.to, "yyyy-MM-dd"));
-    params.set("adults", String(adults));
-    params.set("children", String(children));
-    params.set("pets", String(pets));
-    navigate(`/search?${params.toString()}`);
-  };
-
-  const formatDateLabel = () => {
-    if (dateRange?.from && dateRange?.to) {
-      return `${format(dateRange.from, "d MMM", { locale: it })} – ${format(dateRange.to, "d MMM", { locale: it })}`;
-    }
-    if (dateRange?.from) {
-      return format(dateRange.from, "d MMM", { locale: it });
-    }
-    return null;
-  };
-
-  const formatGuestsLabel = () => {
-    const parts: string[] = [];
-    if (adults > 0) parts.push(`${adults} adult${adults !== 1 ? "i" : "o"}`);
-    if (children > 0) parts.push(`${children} bambin${children !== 1 ? "i" : "o"}`);
-    if (pets > 0) parts.push(`${pets} animal${pets !== 1 ? "i" : "e"}`);
-    return parts.length > 0 ? parts.join(", ") : null;
-  };
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [filter, setFilter] = useState<Filter>("Tutte le ville");
+  const {
+    data: properties,
+    isLoading,
+    isError,
+    refetch,
+  } = trpc.properties.list.useQuery(undefined, { retry: 1 });
+  const featured = (properties ?? [])
+    .filter(property =>
+      filter === "Per due"
+        ? property.maxGuests <= 4
+        : filter === "In famiglia"
+          ? property.maxGuests >= 4
+          : filter === "Insieme, in grande"
+            ? property.maxGuests >= 8
+            : true
+    )
+    .slice(0, 4);
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* ── NAVBAR ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link href="/">
-              <div className="flex items-center gap-2 cursor-pointer">
-                <div className="w-8 h-8 rounded-lg bg-rose-500 text-white flex items-center justify-center">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <span className="text-lg font-bold text-rose-500 hidden sm:block">LuxuryStay</span>
-              </div>
-            </Link>
+    <div className="stay-page">
+      <a className="stay-skip" href="#main-content">
+        Vai al contenuto
+      </a>
+      <header className="stay-header">
+        <Link
+          href="/"
+          className="stay-brand"
+          aria-label="LuxuryStay, pagina iniziale"
+        >
+          <span className="stay-brand-mark" aria-hidden="true">
+            <House size={21} strokeWidth={1.3} />
+          </span>
+          <span>
+            Luxury<span className="stay-brand-italic">Stay</span>
+            <small>EXCEPTIONAL PLACES. YOUR WAY.</small>
+          </span>
+        </Link>
+        <nav className="stay-desktop-nav" aria-label="Navigazione principale">
+          <a href="#collection">Le nostre ville</a>
+          <a href="#destinations">Destinazioni</a>
+          <a href="#our-way">Il nostro mondo</a>
+        </nav>
+        <div className="stay-header-actions">
+          <Link href="/become-host" className="stay-host-link">
+            Hai una villa?
+          </Link>
+          <Link
+            href={isAuthenticated ? "/dashboard" : "/login"}
+            className="stay-account"
+          >
+            {isAuthenticated
+              ? user?.name?.split(" ")[0] || "Il tuo account"
+              : "Accedi"}
+            <ArrowUpRight size={15} />
+          </Link>
+          <button
+            type="button"
+            className="stay-menu-button"
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label={menuOpen ? "Chiudi il menu" : "Apri il menu"}
+            aria-expanded={menuOpen}
+            aria-controls="stay-mobile-menu"
+          >
+            {menuOpen ? <X size={23} /> : <Menu size={23} />}
+          </button>
+        </div>
+        {menuOpen && (
+          <nav
+            id="stay-mobile-menu"
+            className="stay-mobile-nav"
+            aria-label="Menu mobile"
+          >
+            <a href="#collection" onClick={() => setMenuOpen(false)}>
+              Le nostre ville
+            </a>
+            <a href="#destinations" onClick={() => setMenuOpen(false)}>
+              Destinazioni
+            </a>
+            <a href="#our-way" onClick={() => setMenuOpen(false)}>
+              Il nostro mondo
+            </a>
+            <Link href="/become-host">Hai una villa?</Link>
+            {isAuthenticated && (
+              <button
+                type="button"
+                onClick={async () => {
+                  setMenuOpen(false);
+                  await logout();
+                }}
+              >
+                Esci dall'account
+              </button>
+            )}
+          </nav>
+        )}
+      </header>
 
-            {/* Mode Toggle */}
-            <div className="flex items-center bg-slate-100 rounded-full p-1 gap-1">
-              <button
-                onClick={() => setMode("travel")}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-                  mode === "travel"
-                    ? "bg-white shadow text-slate-900"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                Viaggia
-              </button>
-              <button
-                onClick={() => setMode("host")}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-                  mode === "host"
-                    ? "bg-white shadow text-slate-900"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                Ospita
-              </button>
+      <main id="main-content">
+        <section className="stay-hero" aria-labelledby="stay-title">
+          <img
+            className="stay-hero-image"
+            src="/images/stay-hero.jpg"
+            alt="Una villa mediterranea in pietra affacciata su una piscina e sul mare"
+            fetchPriority="high"
+            width="1536"
+            height="1024"
+          />
+          <div className="stay-hero-shade" />
+          <div className="stay-hero-content">
+            <p className="stay-eyebrow">
+              <span /> LUOGHI SPECIALI, MOMENTI TUOI
+            </p>
+            <h1 id="stay-title">
+              Ci sono luoghi.
+              <br />E poi c’è <em>il tuo.</em>
+            </h1>
+            <p>
+              Ville da vivere, tempo da ritrovare.
+              <br />
+              Il tuo prossimo ricordo comincia qui.
+            </p>
+            <a href="#collection" className="stay-hero-link">
+              Trova il tuo posto nel mondo <ArrowUpRight size={19} />
+            </a>
+          </div>
+          <div className="stay-hero-bottom">
+            <span>IL PIACERE DI SENTIRSI ALTROVE.</span>
+            <a href="#destinations" aria-label="Scopri le destinazioni">
+              <ArrowDown size={19} />
+            </a>
+            <span>LA TUA PROSSIMA PAUSA, SENZA FRETTA.</span>
+          </div>
+        </section>
+        <div className="stay-search-container">
+          <StaySearch />
+        </div>
+
+        <div className="stay-intro">
+          <span>Una casa tutta tua.</span>
+          <span>Una prospettiva diversa.</span>
+          <span>Il tempo che meriti.</span>
+        </div>
+
+        <section
+          id="collection"
+          className="stay-section stay-collection"
+          aria-labelledby="collection-title"
+        >
+          <div className="stay-section-top">
+            <div>
+              <p className="stay-eyebrow">LA COLLEZIONE</p>
+              <h2 id="collection-title">
+                Il bello di <em>essere altrove.</em>
+              </h2>
             </div>
-
-            {/* Right Nav */}
-            <div className="flex items-center gap-2">
-              {mode === "host" && (
-                <Link href="/become-host">
-                  <Button variant="ghost" size="sm" className="text-sm font-medium hidden sm:flex">
-                    Metti in affitto il tuo spazio
-                  </Button>
-                </Link>
-              )}
-              <Button variant="ghost" size="sm" className="hidden sm:flex">
-                <Globe className="w-4 h-4" />
-              </Button>
-              {isAuthenticated ? (
-                <div className="relative">
-                  <button
-                    onClick={() => setUserMenuOpen((v) => !v)}
-                    className="flex items-center gap-2 border border-slate-300 rounded-full px-3 py-1.5 hover:shadow-md transition-shadow"
-                  >
-                    <div className="w-6 h-6 rounded-full bg-rose-500 text-white flex items-center justify-center text-xs font-bold">
-                      {user?.name?.[0]?.toUpperCase() ?? "U"}
-                    </div>
-                    <span className="text-sm font-medium text-slate-700 hidden sm:block">
-                      {user?.name?.split(" ")[0]}
-                    </span>
-                  </button>
-                  {userMenuOpen && (
-                    <>
-                      <div className="fixed inset-0 z-10" onClick={() => setUserMenuOpen(false)} />
-                      <div className="absolute right-0 mt-2 w-44 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden">
-                        <Link href="/dashboard" onClick={() => setUserMenuOpen(false)}>
-                          <div className="px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">Dashboard</div>
-                        </Link>
-                        <div className="border-t border-slate-100" />
-                        <button
-                          className="w-full text-left px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 cursor-pointer"
-                          onClick={async () => { setUserMenuOpen(false); await logout(); }}
-                        >
-                          Esci
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <a href={getLoginUrl()}>
-                  <button className="flex items-center gap-2 border border-slate-300 rounded-full px-3 py-1.5 hover:shadow-md transition-shadow">
-                    <User className="w-4 h-4 text-slate-600" />
-                    <span className="text-sm font-medium text-slate-700 hidden sm:block">Accedi / Registrati</span>
-                  </button>
-                </a>
-              )}
+            <Link href="/search" className="stay-text-link">
+              Esplora tutte le ville <ArrowUpRight size={18} />
+            </Link>
+          </div>
+          <div className="stay-collection-toolbar">
+            <p>Spazi da condividere. Luoghi da ricordare.</p>
+            <div
+              className="stay-filters"
+              role="group"
+              aria-label="Filtra le ville per ospiti"
+            >
+              {filters.map(item => (
+                <button
+                  type="button"
+                  key={item}
+                  aria-pressed={filter === item}
+                  onClick={() => setFilter(item)}
+                >
+                  {item}
+                </button>
+              ))}
             </div>
           </div>
-        </div>
-      </nav>
-
-      {mode === "travel" ? (
-        <>
-          {/* ── HERO + SEARCH BAR ── */}
-          <section className="pt-16 bg-white">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-              {/* Airbnb-style Search Bar */}
-              <div
-                ref={searchRef}
-                className="max-w-3xl mx-auto"
+          {isLoading ? (
+            <div
+              className="stay-villa-grid"
+              aria-busy="true"
+              aria-label="Caricamento ville"
+            >
+              {[0, 1, 2, 3].map(index => (
+                <div className="stay-villa-skeleton" key={index}>
+                  <div />
+                  <span />
+                  <span />
+                </div>
+              ))}
+            </div>
+          ) : isError ? (
+            <div className="stay-empty" role="status">
+              <House size={29} strokeWidth={1.2} />
+              <h3>Le ville si fanno attendere, solo un momento.</h3>
+              <p>
+                Non riusciamo a caricare la collezione. Puoi riprovare oppure
+                esplorare le destinazioni qui sotto.
+              </p>
+              <button
+                type="button"
+                className="stay-text-link"
+                onClick={() => refetch()}
               >
-                {/* Compact bar visible by default */}
-                <div
-                  className={`flex items-center border border-slate-300 rounded-full shadow-md hover:shadow-lg transition-shadow cursor-pointer bg-white ${
-                    activeSearchField ? "ring-2 ring-slate-900 ring-offset-2" : ""
-                  }`}
-                >
-                  {/* Destination */}
-                  <div className="flex-1 relative">
-                    <div
-                      className={`px-6 py-3 rounded-full cursor-pointer ${
-                        activeSearchField === "destination" ? "bg-white shadow-inner rounded-full" : "hover:bg-slate-50"
-                      }`}
-                      onClick={() => { setActiveSearchField("destination"); setShowDestSuggestions(true); }}
-                    >
-                      <div className="text-xs font-bold text-slate-800">Dove</div>
-                      <input
-                        type="text"
-                        placeholder="Cerca destinazione"
-                        value={destination}
-                        onChange={(e) => handleDestinationChange(e.target.value)}
-                        onFocus={() => { setActiveSearchField("destination"); setShowDestSuggestions(true); }}
-                        onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                        className="bg-transparent text-sm text-slate-600 placeholder-slate-400 outline-none w-full"
-                      />
-                    </div>
-
-                    {/* Destinations dropdown */}
-                    {showDestSuggestions && (
-                      <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden z-50">
-
-                        {/* ── Photon autocomplete results ── */}
-                        {photonResults.length > 0 ? (
-                          <>
-                            <div className="px-4 pt-3 pb-1">
-                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                Risultati ricerca
-                              </p>
-                            </div>
-                            {photonResults.map((feat, i) => {
-                              const { name, state, country, type } = feat.properties;
-                              const line1 = name;
-                              const line2 = [state, country].filter(Boolean).join(", ");
-                              const typeEmoji =
-                                type === "city" ? "🏙️" :
-                                type === "district" ? "📍" :
-                                type === "country" ? "🌍" : "📌";
-                              return (
-                                <button
-                                  key={i}
-                                  onClick={() => selectPhotonResult(feat)}
-                                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors"
-                                >
-                                  <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0 text-xl">
-                                    {typeEmoji}
-                                  </div>
-                                  <div className="text-left min-w-0">
-                                    <p className="font-semibold text-slate-900 text-sm truncate">{line1}</p>
-                                    {line2 && <p className="text-xs text-slate-500 truncate">{line2}</p>}
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </>
-                        ) : (
-                          <>
-                            {/* Loading spinner */}
-                            {isFetching && (
-                              <div className="flex items-center gap-2 px-4 py-3 text-xs text-slate-400">
-                                <div className="w-3 h-3 border-2 border-slate-300 border-t-rose-400 rounded-full animate-spin" />
-                                Ricerca in corso…
-                              </div>
-                            )}
-
-                            {/* Nelle vicinanze */}
-                            <button
-                              onClick={handleNearby}
-                              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
-                            >
-                              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
-                                <Navigation className="w-5 h-5 text-slate-700" />
-                              </div>
-                              <div className="text-left">
-                                <p className="font-semibold text-slate-900 text-sm">Nelle vicinanze</p>
-                                <p className="text-xs text-slate-500">Scopri le opzioni intorno a te</p>
-                              </div>
-                            </button>
-
-                            <div className="px-4 pt-2 pb-1">
-                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-                                <TrendingUp className="w-3 h-3" />
-                                Mete più richieste
-                              </p>
-                            </div>
-
-                            {/* Popular destinations (filtered by typed text) */}
-                            {POPULAR_DESTINATIONS.filter(d =>
-                              !destination || d.label.toLowerCase().includes(destination.toLowerCase())
-                            ).map((dest) => (
-                              <button
-                                key={dest.label}
-                                onClick={() => selectDestination(dest)}
-                                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors"
-                              >
-                                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0 text-xl">
-                                  {dest.icon}
-                                </div>
-                                <div className="text-left">
-                                  <p className="font-semibold text-slate-900 text-sm">{dest.label}</p>
-                                  <p className="text-xs text-slate-500">{dest.sublabel}</p>
-                                </div>
-                              </button>
-                            ))}
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="w-px h-6 bg-slate-200" />
-
-                  {/* Check-in */}
-                  <Popover
-                    open={dateOpen}
-                    onOpenChange={setDateOpen}
+                Riprova <ArrowRight size={16} />
+              </button>
+            </div>
+          ) : featured.length ? (
+            <div className="stay-villa-grid">
+              {featured.map(property => {
+                const image = (
+                  property as typeof property & {
+                    images?: { imageUrl: string }[];
+                  }
+                ).images?.[0]?.imageUrl;
+                return (
+                  <Link
+                    key={property.id}
+                    href={`/properties/${property.id}`}
+                    className="stay-villa"
                   >
-                    <PopoverTrigger asChild>
-                      <div
-                        className={`px-5 py-3 cursor-pointer ${
-                          activeSearchField === "checkin" ? "bg-white shadow-inner rounded-full" : "hover:bg-slate-50"
-                        }`}
-                        onClick={() => setActiveSearchField("checkin")}
-                      >
-                        <div className="text-xs font-bold text-slate-800">Check-in</div>
-                        <div className="text-sm text-slate-500">
-                          {dateRange?.from ? format(dateRange.from, "d MMM", { locale: it }) : "Aggiungi date"}
-                        </div>
-                      </div>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 shadow-xl border border-slate-200 rounded-2xl" align="center" onOpenAutoFocus={(e) => { e.preventDefault(); const el = (e.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>('[data-slot="calendar"]'); el?.focus(); }} onFocusOutside={(e) => e.preventDefault()}>
-                      <div className="px-5 pt-4 pb-2 border-b border-slate-100">
-                        <p className="text-sm font-semibold text-slate-900">
-                          {!dateRange?.from
-                            ? "Quando arrivi?"
-                            : !dateRange?.to
-                            ? "Quando torni a casa?"
-                            : "Periodo di soggiorno"}
-                        </p>
-                        {dateRange?.from && !dateRange?.to && (
-                          <p className="text-xs text-slate-400 mt-0.5">
-                            Check-in: {format(dateRange.from, "d MMMM yyyy", { locale: it })}
-                          </p>
-                        )}
-                      </div>
-                      <Calendar
-                        mode="range"
-                        selected={dateRange}
-                        onDayClick={(day, modifiers) => {
-                          if (modifiers.disabled) return;
-                          if (!dateRange?.from || (dateRange.from && dateRange.to)) {
-                            setDateRange({ from: day, to: undefined });
-                          } else {
-                            const from = dateRange.from;
-                            if (isSameDay(day, from)) {
-                              setDateRange(undefined);
-                            } else if (day < from) {
-                              setDateRange({ from: day, to: from });
-                              setDateOpen(false);
-                            } else {
-                              setDateRange({ from, to: day });
-                              setDateOpen(false);
-                            }
-                          }
-                        }}
-                        numberOfMonths={2}
-                        disabled={(day) => { const t = new Date(); t.setHours(0,0,0,0); const d = new Date(day); d.setHours(0,0,0,0); return d < t; }}
-                        classNames={{ today: "", range_start: "cal-range-start", range_end: "cal-range-end", range_middle: "cal-range-middle" }}
-                        className="rounded-2xl"
-                      />
-                      {(dateRange?.from || dateRange?.to) && (
-                        <div className="px-4 pb-3 flex justify-end">
-                          <button
-                            onClick={() => {
-                              setDateRange(undefined);
-                              setDateOpen(false);
-                            }}
-                            className="text-xs text-slate-400 hover:text-slate-600 underline"
-                          >
-                            Cancella date
-                          </button>
+                    <div className="stay-villa-image">
+                      {image ? (
+                        <img
+                          src={image}
+                          alt={property.title}
+                          loading="lazy"
+                          width="700"
+                          height="800"
+                        />
+                      ) : (
+                        <div className="stay-no-photo">
+                          <House size={40} strokeWidth={1} />
+                          <span>Fotografie in arrivo</span>
                         </div>
                       )}
-                    </PopoverContent>
-                  </Popover>
-
-                  <div className="w-px h-6 bg-slate-200" />
-
-                  {/* Check-out */}
-                  <div
-                    className={`px-5 py-3 cursor-pointer ${
-                      activeSearchField === "checkout" ? "bg-white shadow-inner rounded-full" : "hover:bg-slate-50"
-                    }`}
-                    onClick={() => {
-                      setActiveSearchField("checkout");
-                      setDateOpen(true);
-                    }}
-                  >
-                    <div className="text-xs font-bold text-slate-800">Check-out</div>
-                    <div className="text-sm text-slate-500">
-                      {dateRange?.to ? format(dateRange.to, "d MMM", { locale: it }) : "Aggiungi date"}
+                      <span className="stay-villa-location">
+                        <MapPin size={12} />
+                        {property.city}, {property.country}
+                      </span>
+                      <span className="stay-villa-arrow">
+                        <ArrowUpRight size={20} />
+                      </span>
                     </div>
-                  </div>
-
-                  <div className="w-px h-6 bg-slate-200" />
-
-                  {/* Guests */}
-                  <Popover open={guestsOpen} onOpenChange={setGuestsOpen}>
-                    <PopoverTrigger asChild>
-                      <div
-                        className="flex items-center gap-2 px-5 py-3 cursor-pointer hover:bg-slate-50 rounded-r-full"
-                        onClick={() => setActiveSearchField("guests")}
-                      >
-                        <div>
-                          <div className="text-xs font-bold text-slate-800">Ospiti</div>
-                          <div className="text-sm text-slate-500">
-                            {formatGuestsLabel() || "Aggiungi ospiti"}
-                          </div>
-                        </div>
-                        {/* Search Button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSearch();
-                          }}
-                          className="ml-2 w-10 h-10 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center transition-colors flex-shrink-0"
-                        >
-                          <Search className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80 shadow-xl border border-slate-200 rounded-2xl p-4" align="end">
-                      <div className="space-y-4">
-                        {/* Adults */}
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <User className="w-4 h-4 text-slate-600" />
-                              <span className="font-medium text-slate-900">Adulti</span>
-                            </div>
-                            <p className="text-xs text-slate-500">Età 13+</p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => setAdults(Math.max(1, adults - 1))}
-                              className="w-8 h-8 rounded-full border border-slate-300 flex items-center justify-center hover:border-slate-900 transition-colors disabled:opacity-40"
-                              disabled={adults <= 1}
-                            >
-                              <Minus className="w-3 h-3" />
-                            </button>
-                            <span className="w-5 text-center font-medium">{adults}</span>
-                            <button
-                              onClick={() => setAdults(adults + 1)}
-                              className="w-8 h-8 rounded-full border border-slate-300 flex items-center justify-center hover:border-slate-900 transition-colors"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-
-                        <Separator />
-
-                        {/* Children */}
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <Baby className="w-4 h-4 text-slate-600" />
-                              <span className="font-medium text-slate-900">Bambini</span>
-                            </div>
-                            <p className="text-xs text-slate-500">Età 2–12</p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => setChildren(Math.max(0, children - 1))}
-                              className="w-8 h-8 rounded-full border border-slate-300 flex items-center justify-center hover:border-slate-900 transition-colors disabled:opacity-40"
-                              disabled={children <= 0}
-                            >
-                              <Minus className="w-3 h-3" />
-                            </button>
-                            <span className="w-5 text-center font-medium">{children}</span>
-                            <button
-                              onClick={() => setChildren(children + 1)}
-                              className="w-8 h-8 rounded-full border border-slate-300 flex items-center justify-center hover:border-slate-900 transition-colors"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-
-                        <Separator />
-
-                        {/* Pets */}
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <PawPrint className="w-4 h-4 text-slate-600" />
-                              <span className="font-medium text-slate-900">Animali</span>
-                            </div>
-                            <p className="text-xs text-slate-500">
-                              <span className="underline cursor-pointer">Portare un animale da compagnia?</span>
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => setPets(Math.max(0, pets - 1))}
-                              className="w-8 h-8 rounded-full border border-slate-300 flex items-center justify-center hover:border-slate-900 transition-colors disabled:opacity-40"
-                              disabled={pets <= 0}
-                            >
-                              <Minus className="w-3 h-3" />
-                            </button>
-                            <span className="w-5 text-center font-medium">{pets}</span>
-                            <button
-                              onClick={() => setPets(pets + 1)}
-                              className="w-8 h-8 rounded-full border border-slate-300 flex items-center justify-center hover:border-slate-900 transition-colors"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ── CATEGORIES ── */}
-          <section className="border-b border-slate-200 bg-white sticky top-16 z-40">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6">
-              <div className="flex items-center gap-8 overflow-x-auto py-4 scrollbar-hide">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.value}
-                    onClick={() => navigate(`/search?category=${cat.value}`)}
-                    className="flex flex-col items-center gap-1.5 min-w-[60px] group opacity-70 hover:opacity-100 transition-opacity pb-1 border-b-2 border-transparent hover:border-slate-900"
-                  >
-                    <span className="text-2xl">{cat.icon}</span>
-                    <span className="text-xs font-medium text-slate-700 whitespace-nowrap">{cat.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* ── FEATURED PROPERTIES ── */}
-          <section className="py-8 bg-white">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6">
-              {isLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                    <div key={i} className="space-y-3">
-                      <div className="aspect-square bg-slate-200 animate-pulse rounded-xl" />
-                      <div className="h-4 bg-slate-200 rounded animate-pulse" />
-                      <div className="h-4 w-2/3 bg-slate-200 rounded animate-pulse" />
-                    </div>
-                  ))}
-                </div>
-              ) : featured.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {featured.map((property) => (
-                    <Link
-                      key={property.id}
-                      href={`/properties/${property.id}`}
-                    >
-                      <div className="group cursor-pointer">
-                        <div className="relative aspect-square rounded-xl overflow-hidden">
-                          <img
-                            src={
-                              (property as any).images?.[0]?.imageUrl ||
-                              "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&h=800&fit=crop"
-                            }
-                            alt={property.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                          <button
-                            className="absolute top-3 right-3 p-1.5 rounded-full text-white/80 hover:text-white transition-colors"
-                            onClick={(e) => e.preventDefault()}
-                          >
-                            <Heart className="w-5 h-5 drop-shadow" />
-                          </button>
-                          {(property as any).averageRating && (
-                            <Badge className="absolute top-3 left-3 bg-white text-slate-900 text-xs font-semibold border-0 shadow">
-                              Guest Favorite
-                            </Badge>
+                    <div className="stay-villa-info">
+                      <h3>{property.title}</h3>
+                      <span>
+                        <strong>
+                          €{" "}
+                          {Number(property.pricePerNight).toLocaleString(
+                            "it-IT"
                           )}
-                        </div>
-                        <div className="mt-2.5 space-y-1">
-                          <div className="flex items-start justify-between">
-                            <p className="font-semibold text-slate-900 truncate">
-                              {property.city}, {property.country}
-                            </p>
-                            {(property as any).averageRating && (
-                              <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                                <Star className="w-3.5 h-3.5 fill-slate-900 text-slate-900" />
-                                <span className="text-sm text-slate-900">
-                                  {Number((property as any).averageRating).toFixed(1)}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          <p className="text-slate-500 text-sm truncate">{property.title}</p>
-                          <p className="text-slate-500 text-sm">
-                            {formatDateLabel() || "Disponibile"}
-                          </p>
-                          <p className="text-slate-900 text-sm">
-                            <span className="font-semibold">€{property.pricePerNight}</span>
-                            <span className="text-slate-500"> notte</span>
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+                        </strong>{" "}
+                        / notte
+                      </span>
+                    </div>
+                    <p className="stay-villa-details">
+                      <span>
+                        <Users size={14} />
+                        {property.maxGuests} ospiti
+                      </span>
+                      <span>
+                        <BedDouble size={14} />
+                        {property.bedrooms} camere
+                      </span>
+                    </p>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="stay-empty">
+              <House size={30} strokeWidth={1.2} />
+              <h3>
+                {properties?.length
+                  ? "Un altro modo di stare insieme."
+                  : "Il tuo prossimo luogo speciale è in arrivo."}
+              </h3>
+              <p>
+                {properties?.length
+                  ? "Prova un'altra selezione per trovare la villa che fa per te."
+                  : "Stiamo preparando la collezione. Nel frattempo, lasciati ispirare dalle nostre destinazioni."}
+              </p>
+              {properties?.length ? (
+                <button
+                  type="button"
+                  className="stay-text-link"
+                  onClick={() => setFilter("Tutte le ville")}
+                >
+                  Mostra tutte le ville <ArrowRight size={16} />
+                </button>
               ) : (
-                <div className="text-center py-20">
-                  <p className="text-slate-400 text-lg">Nessuna villa disponibile al momento</p>
-                </div>
+                <Link href="/become-host" className="stay-text-link">
+                  Hai una villa? Entra nella collezione <ArrowRight size={16} />
+                </Link>
               )}
             </div>
-          </section>
-        </>
-      ) : (
-        /* ── HOST MODE ── */
-        <section className="pt-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
-            <div className="max-w-2xl">
-              <h1 className="text-5xl font-bold text-slate-900 leading-tight">
-                Ospita con LuxuryStay
-              </h1>
-              <p className="mt-6 text-xl text-slate-600">
-                Guadagna affittando la tua villa a viaggiatori selezionati.
-                Gestisci disponibilità, prezzi e prenotazioni dalla tua dashboard.
-              </p>
-              <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <div className="p-5 bg-slate-50 rounded-2xl">
-                  <div className="text-3xl mb-3">💶</div>
-                  <h3 className="font-semibold text-slate-900">Guadagna di più</h3>
-                  <p className="text-sm text-slate-600 mt-1">Prezzi flessibili e pagamenti rapidi</p>
-                </div>
-                <div className="p-5 bg-slate-50 rounded-2xl">
-                  <div className="text-3xl mb-3">🛡️</div>
-                  <h3 className="font-semibold text-slate-900">Protezione Host</h3>
-                  <p className="text-sm text-slate-600 mt-1">Ospiti verificati e garanzia danni</p>
-                </div>
-                <div className="p-5 bg-slate-50 rounded-2xl">
-                  <div className="text-3xl mb-3">📱</div>
-                  <h3 className="font-semibold text-slate-900">Gestione semplice</h3>
-                  <p className="text-sm text-slate-600 mt-1">Calendario, messaggi e stats in tempo reale</p>
-                </div>
-              </div>
-              <div className="mt-8 flex items-center gap-4">
-                {isAuthenticated ? (
-                  user?.role === "guest" ? (
-                    <Link href="/become-host">
-                      <Button className="bg-rose-500 hover:bg-rose-600 text-white px-8 py-3 text-base rounded-xl">
-                        Inizia a ospitare
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </Button>
-                    </Link>
-                  ) : (
-                    <Link href="/host/properties/new">
-                      <Button className="bg-rose-500 hover:bg-rose-600 text-white px-8 py-3 text-base rounded-xl">
-                        Aggiungi la tua villa
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </Button>
-                    </Link>
-                  )
-                ) : (
-                  <a href={getLoginUrl()}>
-                    <Button className="bg-rose-500 hover:bg-rose-600 text-white px-8 py-3 text-base rounded-xl">
-                      Inizia subito
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </a>
-                )}
-                <Link href="/host/dashboard">
-                  <Button variant="outline" className="px-8 py-3 text-base rounded-xl border-slate-300">
-                    Dashboard Host
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </div>
+          )}
+        </section>
 
-          {/* Host features */}
-          <div className="bg-slate-50 py-16">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6">
-              <h2 className="text-3xl font-bold text-slate-900 mb-10">Come funziona</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {[
-                  { step: "1", title: "Pubblica il tuo annuncio", desc: "Descrivi la tua villa, carica le foto e imposta il prezzo in meno di 10 minuti.", icon: HomeIcon },
-                  { step: "2", title: "Accogli gli ospiti", desc: "Ricevi richieste, comunica con i tuoi ospiti e gestisci il calendario delle prenotazioni.", icon: Users },
-                  { step: "3", title: "Ricevi i pagamenti", desc: "Accredito automatico sul tuo conto entro 24 ore dal check-in dell'ospite.", icon: Star },
-                ].map((item) => (
-                  <div key={item.step} className="flex gap-4">
-                    <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-bold flex-shrink-0">
-                      {item.step}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-slate-900 text-lg">{item.title}</h3>
-                      <p className="text-slate-600 mt-1">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
+        <section
+          id="destinations"
+          className="stay-section stay-destinations-section"
+          aria-labelledby="destinations-title"
+        >
+          <div className="stay-section-top">
+            <div>
+              <p className="stay-eyebrow">SEGUI LA TUA VOGLIA DI PARTIRE</p>
+              <h2 id="destinations-title">
+                A ognuno, <em>il suo altrove.</em>
+              </h2>
+            </div>
+            <p className="stay-section-description">
+              Sale sulla pelle, silenzi tra gli ulivi,
+              <br />
+              un’isola lontana dal quotidiano.
+            </p>
+          </div>
+          <div className="stay-destination-grid">
+            {destinations.map((destination, index) => (
+              <Link
+                className="stay-destination-card"
+                href={`/search?city=${encodeURIComponent(destination.query)}`}
+                key={destination.name}
+              >
+                <img
+                  src={destination.image}
+                  alt={destination.detail}
+                  loading="lazy"
+                  width="900"
+                  height="1000"
+                  style={{ objectPosition: destination.position }}
+                />
+                <span className="stay-destination-number">
+                  0{index + 1} / ISPIRAZIONI
+                </span>
+                <div>
+                  <p>{destination.detail}</p>
+                  <h3>{destination.name}</h3>
+                </div>
+                <span className="stay-destination-arrow">
+                  <ArrowUpRight size={24} />
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section id="our-way" className="stay-philosophy">
+          <div className="stay-philosophy-image">
+            <img
+              src="/images/stay-country.jpg"
+              alt="La quiete di un giardino mediterraneo"
+              loading="lazy"
+              width="900"
+              height="1000"
+            />
+            <span>
+              LESS EVERYDAY.
+              <br />
+              MORE EXTRAORDINARY.
+            </span>
+          </div>
+          <div className="stay-philosophy-copy">
+            <p className="stay-eyebrow">IL MONDO LUXURYSTAY</p>
+            <h2>
+              Non solo una villa.
+              <br />
+              <em>Un altro ritmo.</em>
+            </h2>
+            <p>
+              La prima colazione senza guardare l’ora. Un tuffo prima che il
+              mondo si svegli. Una tavola lunga, con le persone giuste.
+            </p>
+            <p>
+              Crediamo nei luoghi che ti fanno stare bene. E nella libertà di
+              viverli a modo tuo.
+            </p>
+            <Link href="/search" className="stay-text-link">
+              Trova il tuo prossimo soggiorno <ArrowUpRight size={18} />
+            </Link>
+            <div className="stay-service-note">
+              <MessageCircle size={22} strokeWidth={1.3} />
+              <div>
+                <strong>Prima di partire, parliamone.</strong>
+                <span>
+                  Scrivi al proprietario e organizza i dettagli del soggiorno.
+                </span>
               </div>
             </div>
           </div>
         </section>
-      )}
 
-      {/* ── FOOTER ── */}
-      <footer className="bg-slate-900 text-slate-300 py-12 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+        <section className="stay-host-banner">
+          <div>
+            <p className="stay-eyebrow">PER CHI HA UN LUOGO SPECIALE</p>
+            <h2>
+              La tua villa. <em>La loro prossima storia.</em>
+            </h2>
+          </div>
+          <Link href="/become-host" className="stay-outline-link">
+            Entra nella collezione <ArrowUpRight size={18} />
+          </Link>
+        </section>
+      </main>
+      <footer className="stay-footer">
+        <div className="stay-footer-main">
+          <div>
+            <Link href="/" className="stay-footer-brand">
+              Luxury<em>Stay</em>
+            </Link>
+            <p>Luoghi speciali. Il tuo modo di viverli.</p>
+          </div>
+          <div className="stay-footer-links">
             <div>
-              <h4 className="text-white font-semibold mb-4">Supporto</h4>
-              <div className="space-y-2 text-sm">
-                <div className="hover:text-white cursor-pointer">Centro assistenza</div>
-                <div className="hover:text-white cursor-pointer">AirCover</div>
-                <div className="hover:text-white cursor-pointer">Anti-discriminazione</div>
-              </div>
+              <p>ESPLORA</p>
+              <Link href="/search">Le nostre ville</Link>
+              <a href="#destinations">Destinazioni</a>
+              <Link href="/properties-map">Esplora la mappa</Link>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">Ospita</h4>
-              <div className="space-y-2 text-sm">
-                <Link href="/become-host" className="block hover:text-white">Metti in affitto</Link>
-                <Link href="/host/dashboard" className="block hover:text-white">Dashboard Host</Link>
-                <Link href="/host/properties/new" className="block hover:text-white">Aggiungi villa</Link>
-              </div>
+              <p>IL TUO SOGGIORNO</p>
+              <Link href="/dashboard">Le tue prenotazioni</Link>
+              <Link href="/messages">Messaggi</Link>
+              <Link href="/profile">Il tuo profilo</Link>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">LuxuryStay</h4>
-              <div className="space-y-2 text-sm">
-                <Link href="/search" className="block hover:text-white">Esplora ville</Link>
-                <Link href="/search" className="block hover:text-white">Mappa interattiva</Link>
-                <Link href="/messages" className="block hover:text-white">Messaggi</Link>
-              </div>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Account</h4>
-              <div className="space-y-2 text-sm">
-                <Link href="/profile" className="block hover:text-white">Profilo</Link>
-                <Link href="/dashboard" className="block hover:text-white">Dashboard</Link>
-                <Link href="/dashboard" className="block hover:text-white">Prenotazioni</Link>
-              </div>
+              <p>PER I PROPRIETARI</p>
+              <Link href="/become-host">Entra nella collezione</Link>
+              <Link href="/host/dashboard">Area proprietari</Link>
             </div>
           </div>
-          <div className="mt-10 pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
-            <span>© 2026 LuxuryStay, Inc.</span>
-            <div className="flex items-center gap-4">
-              <span className="hover:text-white cursor-pointer">Privacy</span>
-              <span className="hover:text-white cursor-pointer">Termini</span>
-              <span className="hover:text-white cursor-pointer">Mappa del sito</span>
-            </div>
-          </div>
+        </div>
+        <div className="stay-footer-bottom">
+          <span>© {new Date().getFullYear()} LuxuryStay</span>
+          <span>Fatto per chi ama i bei posti.</span>
+          <a href="#main-content">
+            Torna su <ArrowUpRight size={14} />
+          </a>
         </div>
       </footer>
     </div>

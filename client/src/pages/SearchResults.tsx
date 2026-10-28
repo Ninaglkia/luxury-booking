@@ -447,10 +447,10 @@ export default function SearchResults() {
             {/* Logo */}
             <Link href="/">
               <div className="flex items-center gap-2 cursor-pointer flex-shrink-0">
-                <div className="w-8 h-8 rounded-lg bg-rose-500 text-white flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center">
                   <Sparkles className="w-4 h-4" />
                 </div>
-                <span className="text-base font-bold text-rose-500 hidden lg:block">LuxuryStay</span>
+                <span className="text-base font-bold text-primary hidden lg:block">LuxuryStay</span>
               </div>
             </Link>
 
@@ -540,7 +540,7 @@ export default function SearchResults() {
                           {format(dateRange.from, "d MMM", { locale: it })} – {format(dateRange.to, "d MMM", { locale: it })}
                         </span>
                       ) : dateRange?.from ? (
-                        <span className="text-rose-500 font-medium">
+                        <span className="text-primary font-medium">
                           {format(dateRange.from, "d MMM", { locale: it })} → ?
                         </span>
                       ) : (
@@ -615,7 +615,7 @@ export default function SearchResults() {
                     </div>
                     <button
                       onClick={(e) => { e.stopPropagation(); doSearch(); }}
-                      className="w-8 h-8 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center transition-colors"
+                      className="w-8 h-8 rounded-full bg-primary hover:bg-primary/90 text-white flex items-center justify-center transition-colors"
                     >
                       <Search className="w-3.5 h-3.5" />
                     </button>
@@ -821,7 +821,7 @@ export default function SearchResults() {
                         </div>
                         <button
                           onClick={() => goToCheckout(property)}
-                          className="mt-2 w-full bg-rose-500 text-white text-xs font-semibold py-1.5 rounded-lg hover:bg-rose-600 transition-colors"
+                          className="mt-2 w-full bg-primary text-white text-xs font-semibold py-1.5 rounded-lg hover:bg-primary/90 transition-colors"
                         >
                           Prenota ora
                         </button>
