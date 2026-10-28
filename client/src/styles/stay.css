@@ -1702,3 +1702,142 @@
     font-size: 9px;
   }
 }
+/* Bespoke BV arch seal and a two-scale signature for BnB Villa’s. */
+.stay-brand-emblem {
+  display: block;
+  flex: 0 0 auto;
+  width: 51px;
+  height: 58px;
+  overflow: visible;
+}
+.stay-wordmark {
+  display: block;
+  line-height: 1;
+  color: inherit;
+}
+.stay-wordmark-line {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  white-space: nowrap;
+}
+.stay-wordmark-lead {
+  font-family: "DM Sans", sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.stay-wordmark-name {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 39px;
+  line-height: 0.95;
+  letter-spacing: -1.5px;
+  font-weight: 500;
+  font-style: italic;
+}
+.stay-brand .stay-wordmark > small {
+  font-size: 6px;
+  letter-spacing: 1.65px;
+  font-weight: 500;
+  margin-top: 9px;
+  white-space: nowrap;
+}
+.stay-brand {
+  gap: 12px;
+}
+.stay-footer-brand {
+  gap: 15px;
+  align-items: center;
+}
+.stay-footer-brand .stay-brand-emblem {
+  width: 55px;
+  height: 63px;
+}
+.stay-footer-brand .stay-wordmark-name {
+  font-size: 48px;
+}
+.stay-footer-brand .stay-wordmark-lead {
+  font-size: 12px;
+  letter-spacing: 2.4px;
+}
+.stay-auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  line-height: 1;
+}
+.stay-auth-brand .stay-wordmark-name {
+  font-size: 45px;
+}
+.stay-auth-brand .stay-wordmark-lead {
+  font-size: 12px;
+  letter-spacing: 2.1px;
+}
+@media (max-width: 767px) {
+  .stay-brand-emblem {
+    width: 39px;
+    height: 45px;
+  }
+  .stay-brand {
+    gap: 9px;
+  }
+  .stay-wordmark-line {
+    gap: 7px;
+  }
+  .stay-wordmark-name {
+    font-size: 32px;
+    letter-spacing: -1.1px;
+  }
+  .stay-wordmark-lead {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+  }
+  .stay-brand .stay-wordmark > small {
+    font-size: 4.7px;
+    letter-spacing: 1.1px;
+    margin-top: 7px;
+  }
+  .stay-footer-brand .stay-brand-emblem {
+    width: 46px;
+    height: 54px;
+  }
+  .stay-footer-brand .stay-wordmark-name {
+    font-size: 42px;
+  }
+  .stay-auth-brand {
+    gap: 12px;
+  }
+  .stay-auth-brand .stay-wordmark-name {
+    font-size: 36px;
+  }
+  .stay-auth-brand .stay-wordmark-lead {
+    font-size: 10px;
+  }
+}
+@media (max-width: 380px) {
+  .stay-header {
+    padding-inline: 16px;
+  }
+  .stay-brand-emblem {
+    width: 34px;
+    height: 41px;
+  }
+  .stay-brand .stay-wordmark > small {
+    display: none;
+  }
+  .stay-wordmark-name {
+    font-size: 30px;
+  }
+  .stay-wordmark-lead {
+    font-size: 9px;
+    letter-spacing: 1.3px;
+  }
+  .stay-wordmark-line {
+    gap: 5px;
+  }
+  .stay-header-actions {
+    gap: 9px;
+  }
+}

@@ -1,3 +1,5 @@
+import BrandMark from "@/components/stay/BrandMark";
+import BrandWordmark from "@/components/stay/BrandWordmark";
 import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -96,10 +98,8 @@ export default function Verification() {
         <div className="container mx-auto px-6 py-4">
           <Link href="/">
             <div className="flex items-center gap-2 cursor-pointer">
-              <Sparkles className="w-8 h-8 text-primary" />
-              <span className="text-2xl font-serif font-bold text-gradient-gold">
-                BnB Villa
-              </span>
+              <BrandMark />
+                <BrandWordmark tagline={false} />
             </div>
           </Link>
         </div>

@@ -1,3 +1,5 @@
+import BrandMark from "@/components/stay/BrandMark";
+import BrandWordmark from "@/components/stay/BrandWordmark";
 import { useState, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -165,10 +167,8 @@ export default function Checkout() {
             <ArrowLeft className="w-5 h-5 text-slate-700" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-rose-500 text-white flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5" />
-            </div>
-            <span className="font-bold text-rose-500">BnB Villa</span>
+            <BrandMark />
+            <BrandWordmark tagline={false} />
           </div>
         </div>
       </nav>

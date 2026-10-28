@@ -1,3 +1,4 @@
+import BrandMark from "@/components/stay/BrandMark";
 import BrandWordmark from "@/components/stay/BrandWordmark";
 import { BRAND } from "@/lib/brand";
 import { useState } from "react";
@@ -96,9 +97,7 @@ export default function Home() {
           className="stay-brand"
           aria-label={`${BRAND.name}, pagina iniziale`}
         >
-          <span className="stay-brand-mark" aria-hidden="true">
-            <House size={21} strokeWidth={1.3} />
-          </span>
+          <BrandMark />
           <BrandWordmark />
         </Link>
         <nav className="stay-desktop-nav" aria-label="Navigazione principale">
@@ -466,7 +465,12 @@ export default function Home() {
       <footer className="stay-footer">
         <div className="stay-footer-main">
           <div>
-            <Link href="/" className="stay-footer-brand">
+            <Link
+              href="/"
+              className="stay-footer-brand"
+              aria-label={`${BRAND.name}, pagina iniziale`}
+            >
+              <BrandMark />
               <BrandWordmark tagline={false} />
             </Link>
             <p>Luoghi speciali. Il tuo modo di viverli.</p>

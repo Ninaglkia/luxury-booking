@@ -7,8 +7,10 @@ export default function BrandWordmark({
 }) {
   return (
     <span className="stay-wordmark">
-      {BRAND.wordmarkLead}{" "}
-      <span className="stay-brand-italic">{BRAND.wordmarkTail}</span>
+      <span className="stay-wordmark-line">
+        <span className="stay-wordmark-lead">{BRAND.wordmarkLead}</span>
+        <span className="stay-wordmark-name">{BRAND.wordmarkTail}</span>
+      </span>
       {tagline && <small>{BRAND.tagline}</small>}
     </span>
   );
