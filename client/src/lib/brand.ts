@@ -1,5 +1,5 @@
 export const BRAND = {
-  name: "bnbvillas",
-  wordmark: "bnbvillas",
+  name: "bnbvilla’s",
+  wordmark: "bnbvilla’s",
   tagline: "Exceptional villa stays.",
 } as const;

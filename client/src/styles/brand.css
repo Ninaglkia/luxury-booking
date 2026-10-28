@@ -1,0 +1,46 @@
+/* bnbvilla’s signature (proposal 9): Pinyon Script, one word, ’s attached. */
+.stay-wordmark-script {
+  display: block;
+  font-family: "Pinyon Script", "Snell Roundhand", cursive;
+  font-weight: 400;
+  font-size: 44px;
+  line-height: 1.12;
+  letter-spacing: 0;
+  white-space: nowrap;
+  /* Pinyon's hairlines vanish at header size; a hairline stroke keeps them legible. */
+  -webkit-text-stroke: 0.4px currentColor;
+  /* Script swashes overhang the glyph box; keep them from being clipped. */
+  padding: 0.02em 0.12em 0.06em 0.02em;
+}
+
+.stay-brand .stay-wordmark-script {
+  font-size: 50px;
+}
+
+.stay-footer-brand .stay-wordmark-script {
+  font-size: 54px;
+}
+
+.stay-auth-brand .stay-wordmark-script {
+  font-size: 58px;
+}
+
+@media (max-width: 767px) {
+  .stay-brand .stay-wordmark-script {
+    font-size: 40px;
+  }
+
+  .stay-footer-brand .stay-wordmark-script {
+    font-size: 48px;
+  }
+
+  .stay-auth-brand .stay-wordmark-script {
+    font-size: 46px;
+  }
+}
+
+@media (max-width: 380px) {
+  .stay-brand .stay-wordmark-script {
+    font-size: 35px;
+  }
+}
