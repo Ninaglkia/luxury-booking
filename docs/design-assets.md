@@ -22,7 +22,7 @@ Photoreal luxury travel editorial photograph of a quiet Sardinian coastal cove, 
 
 ## Other assets
 
-- `client/public/favicon.svg`: native SVG arch/house mark created in code.
+- `client/public/favicon.svg`: the compact bnbvillas icon, taken from the first letter of the custom wordmark.
 - Fonts: DM Sans and Cormorant Garamond, loaded through Google Fonts with system fallbacks and `display=swap`.
 - Icons: existing installed lucide-react package, consistent with the rest of the repository.
 
@@ -47,3 +47,14 @@ Sources and credits:
 - MapLibre GL JS is BSD-3-Clause; npm retains the package license.
 
 No CARTO tile service or key is used. Its current public raster endpoint requires a registered API key; OpenFreeMap provides the required appearance without adding an account or billing setup.
+
+
+## Unified bnbvillas wordmark
+
+The current brand is **bnbvillas**, a single lowercase word. The nine letters are drawn as original SVG paths with a common baseline, stroke weight and rounded geometry, rather than mixing two fonts or splitting BnB and Villas into separate visual groups. The main signature contains no adjacent crest or tagline by default.
+
+- Shared path data: `client/src/lib/brand-art.ts`.
+- Primary component: `client/src/components/stay/BrandWordmark.tsx`.
+- Portable vector assets: `client/public/brand/bnbvillas-wordmark.svg` and `bnbvillas-wordmark-light.svg`. These use paths and require no installed fonts.
+- Small icon: `client/public/brand/bnbvillas-icon.svg`, derived directly from the first b of the wordmark. `BrandMark.tsx` remains available for avatar/icon contexts; it is not part of the main wordmark.
+- Native code/vector artwork; no image generation or third-party font outlines are used for this identity. Previous BV arch monogram removed.

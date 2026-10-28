@@ -1,4 +1,3 @@
-import BrandMark from "@/components/stay/BrandMark";
 import BrandWordmark from "@/components/stay/BrandWordmark";
 import { BRAND } from "@/lib/brand";
 import { useState } from "react";
@@ -109,7 +108,6 @@ export default function Login() {
           className="stay-auth-brand"
           aria-label={`${BRAND.name}, pagina iniziale`}
         >
-          <BrandMark tone="light" />
           <BrandWordmark tagline={false} />
         </a>
         <div>

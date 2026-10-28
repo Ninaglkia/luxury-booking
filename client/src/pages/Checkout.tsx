@@ -1,4 +1,3 @@
-import BrandMark from "@/components/stay/BrandMark";
 import BrandWordmark from "@/components/stay/BrandWordmark";
 import { useState, useMemo } from "react";
 import { useLocation, Link } from "wouter";
@@ -167,7 +166,6 @@ export default function Checkout() {
             <ArrowLeft className="w-5 h-5 text-slate-700" />
           </button>
           <div className="flex items-center gap-2">
-            <BrandMark />
             <BrandWordmark tagline={false} />
           </div>
         </div>

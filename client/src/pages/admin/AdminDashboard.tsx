@@ -1,4 +1,3 @@
-import BrandMark from "@/components/stay/BrandMark";
 import BrandWordmark from "@/components/stay/BrandWordmark";
 import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -95,7 +94,6 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between">
             <Link href="/">
               <div className="flex items-center gap-2 cursor-pointer">
-                <BrandMark />
                 <BrandWordmark tagline={false} />
               </div>
             </Link>

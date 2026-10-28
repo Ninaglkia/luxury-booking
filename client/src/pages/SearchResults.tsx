@@ -1,4 +1,3 @@
-import BrandMark from "@/components/stay/BrandMark";
 import BrandWordmark from "@/components/stay/BrandWordmark";
 import { BRAND } from "@/lib/brand";
 import { useCallback, useMemo, useState } from "react";
@@ -139,7 +138,6 @@ export function VillaExplorer({ mapFirst = false }: { mapFirst?: boolean }) {
           className="stay-brand"
           aria-label={`${BRAND.name}, pagina iniziale`}
         >
-          <BrandMark />
           <BrandWordmark />
         </Link>
         <Link href="/" className="stay-explore-back">
