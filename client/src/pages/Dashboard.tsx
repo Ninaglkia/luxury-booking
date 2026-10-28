@@ -1,459 +1,565 @@
 import { useState } from "react";
-import { useAuth } from "@/_core/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { trpc } from "@/lib/trpc";
-import { 
-  Sparkles,
-  User,
-  Calendar,
-  Star,
-  Heart,
-  CreditCard,
-  FileText,
-  Bell,
-  Settings,
-  Shield,
-  LogOut,
-  Home
-} from "lucide-react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
+import { ArrowUpRight, ShieldCheck } from "lucide-react";
+import { format, isAfter } from "date-fns";
+import { it } from "date-fns/locale";
 import { toast } from "sonner";
-import { getLoginUrl } from "@/const";
+import type { inferRouterOutputs } from "@trpc/server";
+import type { AppRouter } from "../../../server/routers";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
+import {
+  AccountEmpty,
+  AccountSectionHeader,
+  AccountShell,
+  type AccountNavItem,
+} from "@/components/account/AccountShell";
 
-type Section = "overview" | "bookings" | "reviews" | "wishlist" | "profile" | "payments" | "documents" | "notifications";
+type Section =
+  | "overview"
+  | "bookings"
+  | "wishlist"
+  | "reviews"
+  | "profile"
+  | "documents"
+  | "notifications";
+
+// Used when a booked or saved property has no photo of its own.
+const FALLBACK_IMAGE = "/images/stay-country.jpg";
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: "In attesa",
+  confirmed: "Confermata",
+  cancelled: "Annullata",
+  completed: "Conclusa",
+};
+
+const euro = new Intl.NumberFormat("it-IT", {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 0,
+  // it-IT skips the thousands separator on 4-digit amounts ("6300 €") unless forced.
+  useGrouping: "always",
+});
+
+function formatStay(checkIn: string | Date, checkOut: string | Date) {
+  const from = new Date(checkIn);
+  const to = new Date(checkOut);
+  return `${format(from, "d MMM", { locale: it })} – ${format(to, "d MMM yyyy", { locale: it })}`;
+}
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
-  const [, setLocation] = useLocation();
-  const [activeSection, setActiveSection] = useState<Section>("overview");
+  const [active, setActive] = useState<Section>("overview");
 
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
-      toast.success("Logout effettuato");
+      toast.success("A presto");
       window.location.href = "/";
     },
   });
 
-  const handleLogout = () => {
-    logoutMutation.mutate();
-  };
+  const enabled = !!user;
+  const bookings = trpc.bookings.myBookings.useQuery(undefined, { enabled });
+  const wishlist = trpc.wishlist.getWishlist.useQuery(undefined, { enabled });
+  const notifications = trpc.notifications.list.useQuery(undefined, {
+    enabled,
+  });
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse">
-          <Sparkles className="w-12 h-12 text-primary" />
-        </div>
+      <div className="stay-page account-loading" aria-busy="true">
+        <p className="stay-eyebrow">Un momento…</p>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="p-6 max-w-md">
-          <p className="mb-4">Effettua il login per accedere alla dashboard</p>
-          <a href={getLoginUrl()}>
-            <Button>Accedi</Button>
-          </a>
-        </Card>
+      <div className="stay-page account-gate">
+        <AccountEmpty
+          title="Il tuo spazio ti aspetta"
+          text="Accedi per vedere le tue prenotazioni, i luoghi che hai salvato e i messaggi con gli host."
+          action={{ href: "/login", label: "Accedi" }}
+        />
       </div>
     );
   }
 
-  const menuItems = [
-    { id: "overview" as Section, label: "Panoramica", icon: Home },
-    { id: "bookings" as Section, label: "Le mie prenotazioni", icon: Calendar },
-    { id: "reviews" as Section, label: "Le mie recensioni", icon: Star },
-    { id: "wishlist" as Section, label: "Preferiti", icon: Heart },
-    { id: "profile" as Section, label: "Profilo", icon: User },
-    { id: "payments" as Section, label: "Pagamenti", icon: CreditCard },
-    { id: "documents" as Section, label: "Documenti", icon: FileText },
-    { id: "notifications" as Section, label: "Notifiche", icon: Bell },
+  const unread = (notifications.data ?? []).filter(n => !n.isRead).length;
+  const items: AccountNavItem<Section>[] = [
+    { id: "overview", label: "Panoramica" },
+    { id: "bookings", label: "Prenotazioni" },
+    { id: "wishlist", label: "Preferiti" },
+    { id: "reviews", label: "Recensioni" },
+    { id: "profile", label: "Profilo" },
+    { id: "documents", label: "Documenti" },
+    { id: "notifications", label: "Notifiche", badge: unread },
   ];
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <div className="w-64 border-r bg-background flex flex-col">
-        {/* Logo */}
-        <div className="p-6 border-b">
-          <Link href="/">
-            <div className="flex items-center gap-2 cursor-pointer">
-              <Sparkles className="w-8 h-8 text-primary" />
-              <span className="text-xl font-serif font-bold text-gradient-gold">
-                Luxury Booking
-              </span>
-            </div>
-          </Link>
-        </div>
-
-        {/* User Info */}
-        <div className="p-6 border-b">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="w-6 h-6 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold truncate">{user.name || "Utente"}</h3>
-              <p className="text-sm text-muted-foreground truncate">{user.email}</p>
-            </div>
-          </div>
-          <div className="mt-3 flex items-center gap-2">
-            {user.isVerified ? (
-              <Badge variant="default" className="gap-1">
-                <Shield className="w-3 h-3" />
-                Verificato
-              </Badge>
-            ) : (
-              <Link href="/verification">
-                <Badge variant="secondary" className="gap-1 cursor-pointer hover:bg-secondary/80">
-                  <Shield className="w-3 h-3" />
-                  Non verificato
-                </Badge>
-              </Link>
-            )}
-            <Badge variant="outline">{user.role}</Badge>
-          </div>
-        </div>
-
-        {/* Menu */}
-        <nav className="flex-1 p-4 space-y-1">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeSection === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveSection(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-muted"
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                <span className="font-medium">{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Logout */}
-        <div className="p-4 border-t">
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3"
-            onClick={handleLogout}
-            disabled={logoutMutation.isPending}
-          >
-            <LogOut className="w-5 h-5" />
-            Esci
-          </Button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="container mx-auto p-8">
-          {activeSection === "overview" && <OverviewSection user={user} />}
-          {activeSection === "bookings" && <BookingsSection />}
-          {activeSection === "reviews" && <ReviewsSection />}
-          {activeSection === "wishlist" && <WishlistSection />}
-          {activeSection === "profile" && <ProfileSection user={user} />}
-          {activeSection === "payments" && <PaymentsSection />}
-          {activeSection === "documents" && <DocumentsSection user={user} />}
-          {activeSection === "notifications" && <NotificationsSection />}
-        </div>
-      </div>
-    </div>
+    <AccountShell
+      user={user}
+      eyebrow="Il tuo spazio"
+      items={items}
+      active={active}
+      onSelect={setActive}
+      onLogout={() => logoutMutation.mutate()}
+      loggingOut={logoutMutation.isPending}
+    >
+      {active === "overview" && (
+        <OverviewSection
+          user={user}
+          bookings={bookings.data}
+          bookingsLoading={bookings.isLoading}
+          wishlistCount={wishlist.data?.length ?? 0}
+          unread={unread}
+          onNavigate={setActive}
+        />
+      )}
+      {active === "bookings" && (
+        <BookingsSection
+          bookings={bookings.data}
+          loading={bookings.isLoading}
+        />
+      )}
+      {active === "wishlist" && (
+        <WishlistSection items={wishlist.data} loading={wishlist.isLoading} />
+      )}
+      {active === "reviews" && <ReviewsSection />}
+      {active === "profile" && <ProfileSection user={user} />}
+      {active === "documents" && <DocumentsSection user={user} />}
+      {active === "notifications" && (
+        <NotificationsSection
+          items={notifications.data}
+          loading={notifications.isLoading}
+          onRead={() => notifications.refetch()}
+        />
+      )}
+    </AccountShell>
   );
 }
 
-function OverviewSection({ user }: { user: any }) {
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type Booking = RouterOutputs["bookings"]["myBookings"][number];
+type WishlistItem = RouterOutputs["wishlist"]["getWishlist"][number];
+type NotificationItem = RouterOutputs["notifications"]["list"][number];
+
+function OverviewSection({
+  user,
+  bookings,
+  bookingsLoading,
+  wishlistCount,
+  unread,
+  onNavigate,
+}: {
+  user: { name?: string | null; isVerified?: boolean | null };
+  bookings?: Booking[];
+  bookingsLoading: boolean;
+  wishlistCount: number;
+  unread: number;
+  onNavigate: (section: Section) => void;
+}) {
+  const firstName = user.name?.split(" ")[0] || "di nuovo";
+  const now = new Date();
+  const upcoming = (bookings ?? [])
+    .filter(
+      b => b.status !== "cancelled" && isAfter(new Date(b.checkOutDate), now)
+    )
+    .sort((a, b) => +new Date(a.checkInDate) - +new Date(b.checkInDate));
+  const next = upcoming[0];
+
   return (
-    <div>
-      <h1 className="text-4xl font-serif font-bold mb-2">
-        Benvenuto, {user.name || "Utente"}!
-      </h1>
-      <p className="text-muted-foreground mb-8">
-        Gestisci le tue prenotazioni, recensioni e preferenze da qui
-      </p>
+    <>
+      <AccountSectionHeader
+        eyebrow="Panoramica"
+        title={`Bentornato,`}
+        accent={`${firstName}.`}
+        lead="I tuoi viaggi, i luoghi che hai salvato e tutto ciò che serve per partire sereno."
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-blue-500" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Prenotazioni attive</p>
-              <p className="text-2xl font-bold">0</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center">
-              <Star className="w-6 h-6 text-amber-500" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Recensioni</p>
-              <p className="text-2xl font-bold">0</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
-              <Heart className="w-6 h-6 text-red-500" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Preferiti</p>
-              <p className="text-2xl font-bold">0</p>
-            </div>
-          </div>
-        </Card>
+      <div className="account-stats">
+        <button
+          type="button"
+          className="account-stat"
+          onClick={() => onNavigate("bookings")}
+        >
+          <span className="account-stat-value">
+            {bookingsLoading ? "–" : upcoming.length}
+          </span>
+          <span className="account-stat-label">Soggiorni in programma</span>
+        </button>
+        <button
+          type="button"
+          className="account-stat"
+          onClick={() => onNavigate("wishlist")}
+        >
+          <span className="account-stat-value">{wishlistCount}</span>
+          <span className="account-stat-label">Luoghi salvati</span>
+        </button>
+        <button
+          type="button"
+          className="account-stat"
+          onClick={() => onNavigate("notifications")}
+        >
+          <span className="account-stat-value">{unread}</span>
+          <span className="account-stat-label">Notifiche da leggere</span>
+        </button>
       </div>
+
+      <section className="account-block" aria-labelledby="next-trip">
+        <div className="account-block-title">
+          <h2 id="next-trip">Il tuo prossimo viaggio</h2>
+        </div>
+        {bookingsLoading ? (
+          <div className="account-skeleton" style={{ height: 300 }} />
+        ) : next ? (
+          <article className="account-trip">
+            <div className="account-trip-media">
+              <img src={FALLBACK_IMAGE} alt="" />
+            </div>
+            <div className="account-trip-body">
+              <p className="stay-eyebrow">
+                {next.property?.city}
+                {next.property?.country ? `, ${next.property.country}` : ""}
+              </p>
+              <h3>{next.property?.title ?? "La tua villa"}</h3>
+              <p className="account-trip-dates">
+                {formatStay(next.checkInDate, next.checkOutDate)} ·{" "}
+                {next.numberOfGuests}{" "}
+                {next.numberOfGuests === 1 ? "ospite" : "ospiti"}
+              </p>
+              <span className="account-status" data-status={next.status}>
+                {STATUS_LABEL[next.status] ?? next.status}
+              </span>
+              <Link
+                href={`/properties/${next.propertyId}`}
+                className="account-text-link"
+              >
+                Rivedi la villa
+                <ArrowUpRight size={14} />
+              </Link>
+            </div>
+          </article>
+        ) : (
+          <AccountEmpty
+            title="Il prossimo ricordo comincia qui"
+            text="Non hai soggiorni in programma. Lasciati ispirare dalla collezione e scegli il tuo altrove."
+            action={{ href: "/search", label: "Esplora le ville" }}
+          />
+        )}
+      </section>
 
       {!user.isVerified && (
-        <Card className="p-6 border-amber-500/50 bg-amber-500/5">
-          <div className="flex items-start gap-4">
-            <Shield className="w-6 h-6 text-amber-500 mt-1" />
-            <div className="flex-1">
-              <h3 className="font-semibold mb-1">Verifica il tuo account</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Aumenta la sicurezza del tuo account verificando il tuo numero di telefono
-              </p>
-              <Link href="/verification">
-                <Button variant="default">Verifica ora</Button>
-              </Link>
-            </div>
+        <aside className="account-notice">
+          <ShieldCheck
+            size={26}
+            strokeWidth={1.3}
+            color="#4c583e"
+            aria-hidden="true"
+          />
+          <div>
+            <h3>Verifica il tuo account</h3>
+            <p>
+              Un passaggio veloce che rassicura gli host e rende le tue
+              richieste più semplici da accettare.
+            </p>
+            <Link href="/verification" className="account-text-link">
+              Verifica ora
+              <ArrowUpRight size={14} />
+            </Link>
           </div>
-        </Card>
+        </aside>
       )}
-    </div>
+    </>
   );
 }
 
-function BookingsSection() {
+function BookingsSection({
+  bookings,
+  loading,
+}: {
+  bookings?: Booking[];
+  loading: boolean;
+}) {
   return (
-    <div>
-      <h2 className="text-3xl font-serif font-bold mb-6">Le mie prenotazioni</h2>
-      <Card className="p-12 text-center">
-        <Calendar className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-        <h3 className="text-xl font-serif font-semibold mb-2">
-          Nessuna prenotazione
-        </h3>
-        <p className="text-muted-foreground mb-6">
-          Non hai ancora effettuato prenotazioni. Esplora le nostre ville di lusso!
-        </p>
-        <Link href="/properties">
-          <Button>Esplora ville</Button>
-        </Link>
-      </Card>
-    </div>
+    <>
+      <AccountSectionHeader
+        eyebrow="Prenotazioni"
+        title="I tuoi"
+        accent="soggiorni."
+        lead="Tutte le richieste e le prenotazioni, dalla più recente."
+      />
+      {loading ? (
+        <div className="account-skeleton" />
+      ) : bookings && bookings.length > 0 ? (
+        <div className="account-booking-list">
+          {bookings.map(booking => (
+            <article key={booking.id} className="account-booking">
+              <div className="account-booking-thumb">
+                <img src={FALLBACK_IMAGE} alt="" />
+              </div>
+              <div>
+                <h3>
+                  <Link href={`/properties/${booking.propertyId}`}>
+                    {booking.property?.title ?? "Villa"}
+                  </Link>
+                </h3>
+                <p className="account-booking-meta">
+                  {booking.property?.city} ·{" "}
+                  {formatStay(booking.checkInDate, booking.checkOutDate)} ·{" "}
+                  {booking.numberOfGuests}{" "}
+                  {booking.numberOfGuests === 1 ? "ospite" : "ospiti"}
+                </p>
+              </div>
+              <div className="account-booking-price">
+                <strong>{euro.format(booking.totalPrice)}</strong>
+                <span className="account-status" data-status={booking.status}>
+                  {STATUS_LABEL[booking.status] ?? booking.status}
+                </span>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <AccountEmpty
+          title="Nessun soggiorno, per ora"
+          text="Quando prenoti una villa la trovi qui, con date, ospiti e stato della richiesta."
+          action={{ href: "/search", label: "Trova la tua villa" }}
+        />
+      )}
+    </>
+  );
+}
+
+function WishlistSection({
+  items,
+  loading,
+}: {
+  items?: WishlistItem[];
+  loading: boolean;
+}) {
+  const saved = (items ?? []).filter(item => item.property);
+  return (
+    <>
+      <AccountSectionHeader
+        eyebrow="Preferiti"
+        title="I luoghi che"
+        accent="ti somigliano."
+        lead="Le ville che hai salvato, pronte quando lo sei tu."
+      />
+      {loading ? (
+        <div className="account-skeleton" />
+      ) : saved.length > 0 ? (
+        <div className="account-grid">
+          {saved.map(item => {
+            const property = item.property!;
+            const image =
+              (property as { firstImage?: string }).firstImage ||
+              FALLBACK_IMAGE;
+            return (
+              <Link
+                key={item.id}
+                href={`/properties/${property.id}`}
+                className="account-card"
+              >
+                <div className="account-card-media">
+                  <img src={image} alt={property.title} />
+                </div>
+                <h3>{property.title}</h3>
+                <p>{euro.format(property.pricePerNight)} a notte</p>
+              </Link>
+            );
+          })}
+        </div>
+      ) : (
+        <AccountEmpty
+          title="Nessun luogo salvato"
+          text="Tocca il cuore su una villa per ritrovarla qui quando vuoi."
+          action={{ href: "/search", label: "Esplora la collezione" }}
+        />
+      )}
+    </>
   );
 }
 
 function ReviewsSection() {
   return (
-    <div>
-      <h2 className="text-3xl font-serif font-bold mb-6">Le mie recensioni</h2>
-      <Card className="p-12 text-center">
-        <Star className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-        <h3 className="text-xl font-serif font-semibold mb-2">
-          Nessuna recensione
-        </h3>
-        <p className="text-muted-foreground">
-          Dopo il tuo soggiorno potrai lasciare una recensione
-        </p>
-      </Card>
-    </div>
+    <>
+      <AccountSectionHeader
+        eyebrow="Recensioni"
+        title="I tuoi"
+        accent="ricordi."
+        lead="Dopo ogni soggiorno potrai raccontare com'è andata: aiuta gli altri ospiti e ringrazia chi ti ha accolto."
+      />
+      <AccountEmpty
+        title="Ancora nessuna recensione"
+        text="La possibilità di scrivere una recensione arriva alla fine del tuo primo soggiorno."
+      />
+    </>
   );
 }
 
-function WishlistSection() {
-  const { data: wishlist, isLoading } = trpc.wishlist.getWishlist.useQuery();
-
-  if (isLoading) {
-    return <div>Caricamento...</div>;
-  }
-
+function ProfileSection({
+  user,
+}: {
+  user: {
+    name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    role?: string | null;
+  };
+}) {
+  const rows: Array<[string, string | null | undefined]> = [
+    ["Nome", user.name],
+    ["Email", user.email],
+    ["Telefono", user.phone],
+  ];
   return (
-    <div>
-      <h2 className="text-3xl font-serif font-bold mb-6">I miei preferiti</h2>
-      {wishlist && wishlist.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {wishlist.map((item) => {
-            if (!item.property) return null;
-            return (
-              <Card key={item.id} className="overflow-hidden">
-                {(item.property as any).firstImage && (
-                  <img
-                    src={(item.property as any).firstImage}
-                    alt={item.property.title}
-                    className="w-full h-48 object-cover"
-                  />
-                )}
-                <div className="p-4">
-                  <h3 className="font-semibold mb-2">{item.property.title}</h3>
-                  <p className="text-2xl font-bold text-primary">
-                    €{item.property.pricePerNight}/notte
-                  </p>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      ) : (
-        <Card className="p-12 text-center">
-          <Heart className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-xl font-serif font-semibold mb-2">
-            Nessun preferito
-          </h3>
-          <p className="text-muted-foreground mb-6">
-            Salva le tue ville preferite per trovarle facilmente
-          </p>
-          <Link href="/properties">
-            <Button>Esplora ville</Button>
-          </Link>
-        </Card>
-      )}
-    </div>
+    <>
+      <AccountSectionHeader
+        eyebrow="Profilo"
+        title="Chi"
+        accent="sei."
+        lead="I dati che gli host vedono quando ricevono una tua richiesta."
+      />
+      <dl className="account-rows">
+        {rows.map(([label, value]) => (
+          <div key={label} className="account-row">
+            <dt>{label}</dt>
+            <dd className={value ? undefined : "is-empty"}>
+              {value || "Non indicato"}
+            </dd>
+            <span />
+          </div>
+        ))}
+      </dl>
+      <div className="account-block">
+        <Link href="/profile" className="account-button">
+          Modifica il profilo
+          <ArrowUpRight size={14} />
+        </Link>
+      </div>
+    </>
   );
 }
 
-function ProfileSection({ user }: { user: any }) {
-  return (
-    <div>
-      <h2 className="text-3xl font-serif font-bold mb-6">Profilo</h2>
-      <Card className="p-6">
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Nome</label>
-            <p className="text-lg">{user.name || "Non impostato"}</p>
-          </div>
-          <Separator />
-          <div>
-            <label className="text-sm font-medium">Email</label>
-            <p className="text-lg">{user.email || "Non impostato"}</p>
-          </div>
-          <Separator />
-          <div>
-            <label className="text-sm font-medium">Telefono</label>
-            <p className="text-lg">{user.phone || "Non impostato"}</p>
-          </div>
-          <Separator />
-          <div>
-            <label className="text-sm font-medium">Ruolo</label>
-            <p className="text-lg capitalize">{user.role}</p>
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
+// Show only the last characters of an ID number: the full number never needs to be on screen.
+function maskDocumentNumber(value?: string | null) {
+  if (!value) return "Non indicato";
+  return value.length <= 4 ? "••••" : `•••• ${value.slice(-4)}`;
 }
 
-function PaymentsSection() {
+function DocumentsSection({
+  user,
+}: {
+  user: {
+    idDocumentUrl?: string | null;
+    idDocumentType?: string | null;
+    idDocumentNumber?: string | null;
+    idDocumentVerified?: boolean | null;
+  };
+}) {
   return (
-    <div>
-      <h2 className="text-3xl font-serif font-bold mb-6">Metodi di pagamento</h2>
-      <Card className="p-12 text-center">
-        <CreditCard className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-        <h3 className="text-xl font-serif font-semibold mb-2">
-          Nessun metodo di pagamento
-        </h3>
-        <p className="text-muted-foreground">
-          Aggiungi una carta di credito per prenotazioni più veloci
-        </p>
-      </Card>
-    </div>
-  );
-}
-
-function DocumentsSection({ user }: { user: any }) {
-  return (
-    <div>
-      <h2 className="text-3xl font-serif font-bold mb-6">Documenti di identità</h2>
+    <>
+      <AccountSectionHeader
+        eyebrow="Documenti"
+        title="Identità"
+        accent="verificata."
+        lead="Un documento valido ci permette di tutelare te e chi ti ospita."
+      />
       {user.idDocumentUrl ? (
-        <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <FileText className="w-12 h-12 text-primary" />
-            <div className="flex-1">
-              <h3 className="font-semibold">Documento caricato</h3>
-              <p className="text-sm text-muted-foreground">
-                Tipo: {user.idDocumentType}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Numero: {user.idDocumentNumber}
-              </p>
-              {user.idDocumentVerified ? (
-                <Badge variant="default" className="mt-2">Verificato</Badge>
-              ) : (
-                <Badge variant="secondary" className="mt-2">In verifica</Badge>
-              )}
-            </div>
+        <dl className="account-rows">
+          <div className="account-row">
+            <dt>Tipo</dt>
+            <dd>{user.idDocumentType || "Documento"}</dd>
+            <span />
           </div>
-        </Card>
+          <div className="account-row">
+            <dt>Numero</dt>
+            <dd>{maskDocumentNumber(user.idDocumentNumber)}</dd>
+            <span />
+          </div>
+          <div className="account-row">
+            <dt>Stato</dt>
+            <dd>
+              <span
+                className="account-status"
+                data-status={user.idDocumentVerified ? "confirmed" : "pending"}
+              >
+                {user.idDocumentVerified ? "Verificato" : "In verifica"}
+              </span>
+            </dd>
+            <span />
+          </div>
+        </dl>
       ) : (
-        <Card className="p-12 text-center">
-          <FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-xl font-serif font-semibold mb-2">
-            Nessun documento caricato
-          </h3>
-          <p className="text-muted-foreground mb-6">
-            Carica un documento di identità per verificare il tuo account
-          </p>
-          <Button>Carica documento</Button>
-        </Card>
+        <AccountEmpty
+          title="Nessun documento caricato"
+          text="Completa la verifica per prenotare più velocemente e con la fiducia degli host."
+          action={{ href: "/verification", label: "Inizia la verifica" }}
+        />
       )}
-    </div>
+    </>
   );
 }
 
-function NotificationsSection() {
+function NotificationsSection({
+  items,
+  loading,
+  onRead,
+}: {
+  items?: NotificationItem[];
+  loading: boolean;
+  onRead: () => void;
+}) {
+  const markAsRead = trpc.notifications.markAsRead.useMutation({
+    onSuccess: onRead,
+  });
   return (
-    <div>
-      <h2 className="text-3xl font-serif font-bold mb-6">Notifiche e preferenze</h2>
-      <Card className="p-6">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold">Email promozionali</h3>
-              <p className="text-sm text-muted-foreground">
-                Ricevi offerte esclusive e novità
-              </p>
-            </div>
-            <Button variant="outline">Attiva</Button>
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold">Notifiche prenotazioni</h3>
-              <p className="text-sm text-muted-foreground">
-                Aggiornamenti sulle tue prenotazioni
-              </p>
-            </div>
-            <Button variant="outline">Attiva</Button>
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold">Messaggi</h3>
-              <p className="text-sm text-muted-foreground">
-                Notifiche per nuovi messaggi
-              </p>
-            </div>
-            <Button variant="outline">Attiva</Button>
-          </div>
+    <>
+      <AccountSectionHeader
+        eyebrow="Notifiche"
+        title="Cosa c'è"
+        accent="di nuovo."
+        lead="Conferme, messaggi e aggiornamenti sulle tue prenotazioni."
+      />
+      {loading ? (
+        <div className="account-skeleton" />
+      ) : items && items.length > 0 ? (
+        <div className="account-rows">
+          {items.map(item => (
+            <article
+              key={item.id}
+              className={`account-notification${item.isRead ? "" : " is-unread"}`}
+            >
+              <span className="account-notification-dot" aria-hidden="true" />
+              <div>
+                <h3>{item.title}</h3>
+                <p>{item.message}</p>
+                {!item.isRead && (
+                  <button
+                    type="button"
+                    className="account-text-link account-text-button"
+                    onClick={() => markAsRead.mutate({ id: item.id })}
+                    disabled={markAsRead.isPending}
+                  >
+                    Segna come letta
+                  </button>
+                )}
+              </div>
+              <time dateTime={new Date(item.createdAt).toISOString()}>
+                {format(new Date(item.createdAt), "d MMM", { locale: it })}
+              </time>
+            </article>
+          ))}
         </div>
-      </Card>
-    </div>
+      ) : (
+        <AccountEmpty
+          title="Tutto tranquillo"
+          text="Quando un host ti risponde o una prenotazione cambia stato, lo trovi qui."
+        />
+      )}
+    </>
   );
 }
