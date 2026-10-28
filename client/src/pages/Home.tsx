@@ -15,6 +15,10 @@ import {
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import StaySearch from "@/components/stay/StaySearch";
+import VillaCard from "@/components/stay/VillaCard";
+import VillaExampleDialog from "@/components/stay/VillaExampleDialog";
+import MapDiscovery from "@/components/stay/MapDiscovery";
+import { DEMO_VILLAS, type VillaListing } from "@/data/villa-examples";
 import "@/styles/stay.css";
 
 const destinations = [
@@ -52,12 +56,21 @@ export default function Home() {
   const { user, isAuthenticated, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [filter, setFilter] = useState<Filter>("Tutte le ville");
-  const {
-    data: properties,
-    isLoading,
-    isError,
-    refetch,
-  } = trpc.properties.list.useQuery(undefined, { retry: 1 });
+  const { data: properties } = trpc.properties.list.useQuery(undefined, {
+    retry: 1,
+  });
+  const [selectedExample, setSelectedExample] = useState<VillaListing | null>(
+    null
+  );
+  const examples = DEMO_VILLAS.filter(villa =>
+    filter === "Per due"
+      ? villa.maxGuests <= 4
+      : filter === "In famiglia"
+        ? villa.maxGuests >= 4
+        : filter === "Insieme, in grande"
+          ? villa.maxGuests >= 8
+          : true
+  );
   const featured = (properties ?? [])
     .filter(property =>
       filter === "Per due"
@@ -92,6 +105,7 @@ export default function Home() {
         <nav className="stay-desktop-nav" aria-label="Navigazione principale">
           <a href="#collection">Le nostre ville</a>
           <a href="#destinations">Destinazioni</a>
+          <a href="#map-discovery">La mappa</a>
           <a href="#our-way">Il nostro mondo</a>
         </nav>
         <div className="stay-header-actions">
@@ -230,36 +244,22 @@ export default function Home() {
               ))}
             </div>
           </div>
-          {isLoading ? (
-            <div
-              className="stay-villa-grid"
-              aria-busy="true"
-              aria-label="Caricamento ville"
-            >
-              {[0, 1, 2, 3].map(index => (
-                <div className="stay-villa-skeleton" key={index}>
-                  <div />
-                  <span />
-                  <span />
-                </div>
-              ))}
-            </div>
-          ) : isError ? (
-            <div className="stay-empty" role="status">
-              <House size={29} strokeWidth={1.2} />
-              <h3>Le ville si fanno attendere, solo un momento.</h3>
-              <p>
-                Non riusciamo a caricare la collezione. Puoi riprovare oppure
-                esplorare le destinazioni qui sotto.
+          {!properties?.length ? (
+            <>
+              <p className="stay-demo-notice">
+                <span>Una prima ispirazione</span> Annunci e prezzi d’esempio,
+                non prenotabili.
               </p>
-              <button
-                type="button"
-                className="stay-text-link"
-                onClick={() => refetch()}
-              >
-                Riprova <ArrowRight size={16} />
-              </button>
-            </div>
+              <div className="stay-villa-grid">
+                {examples.map(villa => (
+                  <VillaCard
+                    key={villa.id}
+                    villa={villa}
+                    onSelect={setSelectedExample}
+                  />
+                ))}
+              </div>
+            </>
           ) : featured.length ? (
             <div className="stay-villa-grid">
               {featured.map(property => {
@@ -352,6 +352,8 @@ export default function Home() {
             </div>
           )}
         </section>
+
+        <MapDiscovery />
 
         <section
           id="destinations"
@@ -458,6 +460,10 @@ export default function Home() {
           </Link>
         </section>
       </main>
+      <VillaExampleDialog
+        villa={selectedExample}
+        onClose={() => setSelectedExample(null)}
+      />
       <footer className="stay-footer">
         <div className="stay-footer-main">
           <div>
@@ -471,6 +477,7 @@ export default function Home() {
               <p>ESPLORA</p>
               <Link href="/search">Le nostre ville</Link>
               <a href="#destinations">Destinazioni</a>
+              <a href="#map-discovery">La mappa</a>
               <Link href="/properties-map">Esplora la mappa</Link>
             </div>
             <div>

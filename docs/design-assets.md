@@ -25,3 +25,25 @@ Photoreal luxury travel editorial photograph of a quiet Sardinian coastal cove, 
 - `client/public/favicon.svg`: native SVG arch/house mark created in code.
 - Fonts: DM Sans and Cormorant Garamond, loaded through Google Fonts with system fallbacks and `display=swap`.
 - Icons: existing installed lucide-react package, consistent with the rest of the repository.
+
+## Fictional example listing: Puglia
+
+`client/public/images/stay-puglia.jpg` was generated with the built-in OpenAI ImageGen tool on 2026-10-28. The original PNG is `exec-7f8ee0cb-6ad8-420e-9624-d91d720a31fc.png` in the same generated_images directory listed above.
+
+Prompt: Use case photorealistic-natural. Create one high-end architectural editorial photograph for a fictional example luxury holiday villa listing in Puglia, Italy. Wide 3:2 landscape. A beautifully renovated historic creamy limestone masseria with simple flat roofs and a small traditional domed trullo to one side, elegant pale limestone terrace, a private long rectangular aquamarine swimming pool in foreground, ancient olive trees and warm dry grass, subtle sand linen parasol, natural wooden loungers, midday soft sunlight, summery peaceful atmosphere. Photoreal materials and natural details, Architectural Digest travel editorial, muted cream olive sage and water blue. No text, no people, no logos, no collage. This is a fictional example property, not a real booking listing.
+
+Four example villas are defined in `client/src/data/villa-examples.ts`. They use nonnumeric string IDs, are labeled as examples on every card and detail sheet, are never written to the database, and have no checkout/payment action. Their prices and map coordinates are explicitly illustrative. Real property cards continue to use database records and actual property photos.
+
+## Vector map
+
+The map uses MapLibre GL JS 6.16.0 and the OpenFreeMap public vector service. The custom style at `client/public/maps/mediterranean.json` is derived from OpenFreeMap Positron, with warm paper land, muted olive vegetation, sea-glass blue water, and Italian-first place labels. The alternative landscape view uses OpenFreeMap Liberty. The style is hosted in this repository, as required for custom styles.
+
+Sources and credits:
+
+- OpenFreeMap quick start: https://openfreemap.org/quick_start/
+- Public service and commercial use: https://openfreemap.org/
+- Upstream style and component licenses: `client/public/maps/OPENFREEMAP-LICENSE.md` (source: https://github.com/hyperknot/openfreemap-styles/blob/main/LICENSE.md)
+- Map data: OpenStreetMap contributors, OpenMapTiles. Attribution remains visible in both map views.
+- MapLibre GL JS is BSD-3-Clause; npm retains the package license.
+
+No CARTO tile service or key is used. Its current public raster endpoint requires a registered API key; OpenFreeMap provides the required appearance without adding an account or billing setup.

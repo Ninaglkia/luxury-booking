@@ -16,7 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format, isSameDay } from "date-fns";
+import { format, isSameDay, isValid, parseISO } from "date-fns";
 import { it } from "date-fns/locale";
 import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
@@ -54,7 +54,11 @@ const destinations: Destination[] = [
   },
 ];
 
-export default function StaySearch() {
+export default function StaySearch({
+  initialSearch = "",
+}: {
+  initialSearch?: string;
+}) {
   const [, navigate] = useLocation();
   const [destination, setDestination] = useState("");
   const [selected, setSelected] = useState<Destination | null>(null);
@@ -66,6 +70,40 @@ export default function StaySearch() {
   const [counts, setCounts] = useState({ adults: 2, children: 0, pets: 0 });
   const wrapper = useRef<HTMLDivElement>(null);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  useEffect(() => {
+    const params = new URLSearchParams(initialSearch);
+    setDestination(params.get("city") ?? "");
+    const lat = params.get("lat") ? Number(params.get("lat")) : NaN;
+    const lng = params.get("lng") ? Number(params.get("lng")) : NaN;
+    setSelected(
+      Number.isFinite(lat) && Number.isFinite(lng)
+        ? { label: params.get("city") ?? "", description: "", lat, lng }
+        : null
+    );
+    const from = params.get("checkin")
+      ? parseISO(params.get("checkin")!)
+      : undefined;
+    const to = params.get("checkout")
+      ? parseISO(params.get("checkout")!)
+      : undefined;
+    setDateRange(
+      from && isValid(from)
+        ? { from, to: to && isValid(to) ? to : undefined }
+        : undefined
+    );
+    const count = (key: string, fallback: number, min: number) => {
+      const value = Number(params.get(key));
+      return params.has(key) && Number.isFinite(value)
+        ? Math.max(min, Math.floor(value))
+        : fallback;
+    };
+    setCounts({
+      adults: count("adults", 2, 1),
+      children: count("children", 0, 0),
+      pets: count("pets", 0, 0),
+    });
+  }, [initialSearch]);
+
   const choices =
     destination.length >= 2 && suggestions.length
       ? suggestions
@@ -140,6 +178,8 @@ export default function StaySearch() {
 
   function search(coords?: { lat: number; lng: number }) {
     const params = new URLSearchParams();
+    if (new URLSearchParams(initialSearch).get("demo") === "1")
+      params.set("demo", "1");
     if (destination.trim() && !coords) params.set("city", destination.trim());
     const location = coords ?? selected;
     if (location) {

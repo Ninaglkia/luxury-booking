@@ -1,0 +1,1377 @@
+/* Shared collection, example sheets and custom vector cartography. */
+.stay-example-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  color: inherit;
+  border-radius: 5px;
+  min-width: 0;
+}
+.stay-example-card:focus-visible {
+  outline: 2px solid #7e8c65;
+  outline-offset: 6px;
+}
+.stay-demo-badge {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  z-index: 2;
+  background: #fffdf3ed;
+  color: #4d583d;
+  border: 1px solid #f0efdf80;
+  padding: 4px 10px;
+  border-radius: 2px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  line-height: 1.6;
+}
+.stay-demo-notice {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 23px;
+  font-size: 10px;
+  color: #838677;
+  line-height: 1.7;
+}
+.stay-demo-notice > span {
+  border: 1px solid #d8ddca;
+  border-radius: 3px;
+  background: #eff1e6;
+  padding: 4px 9px;
+  color: #5e6a4c;
+  font-size: 9px;
+}
+.stay-card-region {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #8c907d;
+  margin-top: 16px;
+}
+.stay-example-card .stay-villa-info {
+  margin-top: 7px;
+}
+.stay-example-card .stay-villa-info h3 {
+  font-size: 25px;
+  font-weight: 400;
+}
+.stay-villa-price {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid #e3e5d8;
+  margin-top: 16px;
+  padding-top: 12px;
+  font-size: 10px;
+  color: #848877;
+}
+.stay-villa-price strong {
+  font-size: 16px;
+  color: #3b4731;
+  font-weight: 500;
+}
+.stay-villa-price > span:last-child {
+  font-size: 8px;
+}
+.stay-example-card.is-selected .stay-villa-image {
+  outline: 2px solid #707d56;
+  outline-offset: 4px;
+}
+.stay-example-dialog {
+  padding: 0 !important;
+  display: block !important;
+  overflow-y: auto !important;
+  max-width: 840px !important;
+  width: calc(100% - 36px) !important;
+  max-height: 90dvh;
+  border-radius: 7px !important;
+  border: 1px solid #e5e5d6 !important;
+  background: #f8f7f2 !important;
+  gap: 0 !important;
+  color: #343c2b;
+  font-family: "DM Sans", sans-serif;
+  z-index: 1100 !important;
+}
+.stay-example-dialog > button {
+  background: #fffdf4 !important;
+  opacity: 1 !important;
+  border-radius: 50% !important;
+  padding: 9px !important;
+  top: 15px !important;
+  right: 15px !important;
+  color: #4c583e;
+}
+.stay-example-photo {
+  position: relative;
+  height: 330px;
+  overflow: hidden;
+}
+.stay-example-photo > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 65%;
+}
+.stay-example-body {
+  padding: 30px 38px 28px;
+}
+.stay-example-body > .stay-eyebrow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 8px;
+  letter-spacing: 1.4px;
+  color: #84906d;
+}
+.stay-example-body h2 {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 400;
+  font-size: 43px;
+  letter-spacing: -1.5px;
+  line-height: 1.12;
+  margin-top: 12px;
+}
+.stay-example-body [id$="description"] {
+  margin-top: 7px;
+  font-size: 12px;
+  color: #8b8e7d;
+}
+.stay-example-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  border-block: 1px solid #e0e3d4;
+  padding-block: 18px;
+  margin-block: 23px;
+}
+.stay-example-facts > span {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 11px;
+  color: #727b61;
+}
+.stay-example-facts svg {
+  stroke-width: 1.2;
+}
+.stay-example-description {
+  font-size: 12px;
+  line-height: 1.95;
+  color: #717966;
+  max-width: 640px;
+}
+.stay-example-amenities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  margin-block: 21px;
+  font-size: 10px;
+  color: #74805f;
+}
+.stay-example-amenities > span {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.stay-example-booking {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-top: 1px solid #e0e3d4;
+  padding-top: 23px;
+  margin-top: 24px;
+}
+.stay-example-booking strong {
+  font-size: 25px;
+  font-weight: 500;
+  letter-spacing: -0.8px;
+}
+.stay-example-booking > div > span {
+  font-size: 10px;
+  color: #8a8e7e;
+}
+.stay-example-booking > button {
+  padding: 13px 21px;
+  background: #e6e9dc;
+  color: #8a9479;
+  border: 1px solid #d8decb;
+  border-radius: 3px;
+  font-size: 10px;
+  cursor: not-allowed;
+}
+.stay-demo-disclaimer {
+  font-size: 9px;
+  line-height: 1.8;
+  color: #959b89;
+  margin-top: 18px;
+  max-width: 630px;
+}
+.stay-map {
+  position: relative;
+  height: 100%;
+  min-height: 330px;
+  isolation: isolate;
+  background: #bcd8d6;
+  overflow: hidden;
+  font-family: "DM Sans", sans-serif;
+}
+.stay-map-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.stay-map .maplibregl-canvas {
+  outline: 0;
+}
+.stay-map .maplibregl-ctrl-attrib {
+  font-family: "DM Sans", sans-serif;
+  font-size: 8px;
+  color: #647867;
+  background: #fffdf1dc;
+  max-width: 95%;
+  border-radius: 0;
+}
+.stay-map .maplibregl-ctrl-attrib a {
+  color: #647867;
+}
+.stay-map .maplibregl-ctrl-bottom-left {
+  z-index: 4;
+}
+.stay-map .maplibregl-ctrl-group {
+  border: 1px solid #e2e4d5;
+  box-shadow: 0 3px 14px #35462a12;
+  border-radius: 4px;
+  background: #fffef7;
+}
+.stay-map .maplibregl-ctrl-group button {
+  width: 36px;
+  height: 36px;
+}
+.stay-map .maplibregl-ctrl-bottom-right {
+  bottom: 18px;
+  right: 12px;
+}
+.stay-price-pin {
+  display: block;
+  background: #fffef7;
+  color: #485838;
+  padding: 8px 13px;
+  border: 1px solid #aab99b;
+  border-radius: 5px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px #30452d1a;
+  cursor: pointer;
+  line-height: 1.3;
+  transition:
+    background-color 0.2s,
+    color 0.2s,
+    box-shadow 0.2s;
+}
+.stay-price-pin::after {
+  content: "";
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-right: 1px solid #aab99b;
+  border-bottom: 1px solid #aab99b;
+  background: #fffef7;
+  left: calc(50% - 4px);
+  bottom: -4px;
+  transform: rotate(45deg);
+}
+.stay-price-pin.is-active,
+.stay-price-pin:hover,
+.stay-price-pin:focus-visible {
+  background: #4c583e;
+  color: #fffdf2;
+  box-shadow: 0 4px 16px #30452d30;
+  outline: 0;
+}
+.stay-price-pin.is-active::after,
+.stay-price-pin:hover::after,
+.stay-price-pin:focus-visible::after {
+  background: #4c583e;
+  border-color: #4c583e;
+}
+.stay-map-top {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  z-index: 5;
+  pointer-events: none;
+}
+.stay-map-top > div,
+.stay-map-top > button {
+  pointer-events: auto;
+}
+.stay-map-style {
+  display: flex;
+  padding: 4px;
+  background: #fffdf5eb;
+  border: 1px solid #d9decc;
+  border-radius: 4px;
+  box-shadow: 0 4px 15px #35462a0a;
+}
+.stay-map-style button {
+  padding: 7px 13px;
+  font-size: 9px;
+  color: #808a72;
+  border-radius: 2px;
+}
+.stay-map-style button[aria-pressed="true"] {
+  background: #e9eddf;
+  color: #52613f;
+}
+.stay-map-fit {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  background: #fffdf5ed;
+  color: #6d7c5b;
+  border: 1px solid #d9decc;
+  border-radius: 4px;
+  box-shadow: 0 4px 15px #35462a0a;
+}
+.stay-map-top button:hover {
+  color: #35462a;
+  background: #e9eddf;
+}
+.stay-map-caption {
+  position: absolute;
+  bottom: 22px;
+  right: 80px;
+  color: #6a8c86;
+  letter-spacing: 2px;
+  font-size: 7px;
+  pointer-events: none;
+}
+.stay-map-loading {
+  position: absolute;
+  inset: 0;
+  background: #e9efe4ee;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  font-size: 11px;
+  color: #79896d;
+  text-align: center;
+  padding: 25px;
+}
+.stay-map-loading > svg {
+  animation: stay-pulse 1.7s ease-in-out infinite;
+}
+.stay-map-error > button {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border-bottom: 1px solid #9fae8f;
+  padding-bottom: 6px;
+  font-size: 11px;
+}
+.stay-map-loading > strong {
+  font-weight: 500;
+  font-size: 14px;
+  color: #5a6c48;
+}
+.stay-map-discovery {
+  display: grid;
+  grid-template-columns: 0.8fr 1.5fr;
+  max-width: 1260px;
+  margin: 0 auto 100px;
+  min-height: 540px;
+  background: #eef0e5;
+  border: 1px solid #e3e6d7;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.stay-map-discovery-copy {
+  padding: 55px 45px;
+}
+.stay-map-discovery-copy > .stay-eyebrow {
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: #84916f;
+}
+.stay-map-discovery h2 {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 48px;
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -2px;
+  margin-top: 22px;
+}
+.stay-map-discovery h2 em {
+  color: #7b8765;
+}
+.stay-map-discovery-copy > p:not(.stay-eyebrow) {
+  font-size: 11px;
+  line-height: 1.95;
+  color: #818a72;
+  margin-top: 22px;
+  max-width: 290px;
+}
+.stay-map-discovery-copy > .stay-text-link {
+  margin-top: 24px;
+  font-size: 10px;
+  gap: 15px;
+}
+.stay-map-discovery-copy > small {
+  display: block;
+  font-size: 8px;
+  color: #9ba38f;
+  margin-top: 18px;
+}
+.stay-map-places {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}
+.stay-map-places button {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  border: 1px solid #d3dbc5;
+  border-radius: 3px;
+  padding: 6px 9px;
+  font-size: 8px;
+  color: #7d896c;
+}
+.stay-map-places button[aria-pressed="true"],
+.stay-map-places button:hover {
+  background: #dde4cf;
+  color: #4e5d3f;
+  border-color: #b7c4a1;
+}
+.stay-discovery-map {
+  position: relative;
+  min-height: 540px;
+}
+.stay-map-preview-card {
+  position: absolute;
+  bottom: 46px;
+  left: 24px;
+  right: 24px;
+  max-width: 330px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  background: #fffef7;
+  padding: 8px 16px 8px 8px;
+  border: 1px solid #e2e5d6;
+  border-radius: 5px;
+  box-shadow: 0 7px 25px #344b351a;
+  color: #4c583e;
+  z-index: 7;
+  width: calc(100% - 48px);
+}
+.stay-map-preview-card > img {
+  width: 88px;
+  height: 90px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.stay-map-preview-card > div {
+  flex: 1;
+  min-width: 0;
+}
+.stay-map-preview-card > div > span {
+  font-size: 7px;
+  letter-spacing: 1px;
+  color: #9a9f8b;
+  text-transform: uppercase;
+}
+.stay-map-preview-card h3 {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 23px;
+  font-weight: 400;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+  margin: 6px 0;
+}
+.stay-map-preview-card p {
+  font-size: 9px;
+  color: #8d947e;
+}
+.stay-map-preview-card strong {
+  font-weight: 500;
+  color: #667352;
+  font-size: 12px;
+}
+.stay-map-preview-card > svg {
+  flex-shrink: 0;
+  stroke-width: 1.2;
+}
+.stay-map-preview-card:hover {
+  box-shadow: 0 9px 35px #344b352b;
+}
+.stay-explore-page {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.stay-explore-header {
+  height: 80px;
+  padding: 0 35px;
+  border-bottom: 1px solid #e1e4d6;
+  display: flex;
+  gap: 25px;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+.stay-explore-back {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 10px;
+  color: #89927b;
+}
+.stay-explore-search {
+  padding: 18px 35px;
+  border-bottom: 1px solid #e1e4d6;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 30;
+}
+.stay-explore-search > .stay-search {
+  max-width: 1100px;
+  margin: auto;
+}
+.stay-explore-search .stay-search-bar {
+  min-height: 77px;
+  padding: 8px;
+  box-shadow: none;
+  background: #fffefa;
+}
+.stay-explore-search .stay-search-submit {
+  min-height: 54px;
+}
+.stay-explore-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 35px 18px;
+  border-bottom: 1px solid #e1e4d6;
+  flex-shrink: 0;
+}
+.stay-explore-toolbar .stay-eyebrow {
+  font-size: 8px;
+  letter-spacing: 2.2px;
+  color: #9aa38b;
+}
+.stay-explore-toolbar h1 {
+  font-size: 33px;
+  letter-spacing: -1.2px;
+  line-height: 1.1;
+  margin-top: 7px;
+}
+.stay-explore-toolbar h1 em {
+  color: #818c6a;
+}
+.stay-explore-controls {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+}
+.stay-sort select {
+  padding: 8px 15px 8px 6px;
+  font-size: 10px;
+  color: #8d967e;
+  border: 0;
+  outline: none;
+  background: none;
+  max-width: 200px;
+}
+.stay-filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 16px;
+  border: 1px solid #d3dbc5;
+  color: #7d896b;
+  border-radius: 3px;
+  font-size: 10px;
+}
+.stay-filter-toggle.is-open,
+.stay-filter-toggle:hover {
+  background: #e6ebd9;
+}
+.stay-explore-filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+  padding: 20px 35px;
+  background: #edf0e3;
+  border-bottom: 1px solid #dce2cf;
+  flex-shrink: 0;
+}
+.stay-explore-filters > label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 9px;
+  color: #6f7e58;
+}
+.stay-explore-filters select {
+  background: #fffef7;
+  border: 1px solid #d3dbc5;
+  border-radius: 3px;
+  padding: 8px 12px;
+  font-size: 11px;
+  min-width: 170px;
+  color: #717f5b;
+}
+.stay-explore-filters > button {
+  font-size: 10px;
+  color: #8b967a;
+  padding: 8px 4px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.stay-explore-filters > button:last-child {
+  margin-left: auto;
+}
+.stay-explore-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 11px 35px;
+  font-size: 10px;
+  color: #909982;
+  border-bottom: 1px solid #dfe5d3;
+  flex-shrink: 0;
+}
+.stay-explore-info strong {
+  color: #73835a;
+  font-weight: 500;
+}
+.stay-explore-demo-note {
+  font-size: 9px;
+  color: #9ba68c;
+}
+.stay-explore-info label {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  font-size: 10px;
+  cursor: pointer;
+}
+.stay-explore-info input {
+  accent-color: #6b7b52;
+}
+.stay-explore-main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.stay-explore-list {
+  width: 47%;
+  max-width: 760px;
+  overflow-y: auto;
+  padding: 25px 28px 30px;
+  flex-shrink: 0;
+}
+.stay-explore-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px 20px;
+}
+.stay-villa-compact .stay-villa-image {
+  aspect-ratio: 4/3.15;
+}
+.stay-villa-compact .stay-card-region {
+  font-size: 7px;
+  margin-top: 13px;
+  letter-spacing: 1px;
+}
+.stay-villa-compact .stay-villa-info h3 {
+  font-size: 24px;
+}
+.stay-villa-compact .stay-villa-price {
+  margin-top: 13px;
+  padding-top: 10px;
+}
+.stay-villa-compact .stay-villa-details {
+  font-size: 9px;
+}
+.stay-explore-map {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  isolation: isolate;
+}
+.stay-explore-disclaimer {
+  font-size: 8px;
+  line-height: 1.9;
+  color: #a4ac98;
+  margin-top: 28px;
+  border-top: 1px solid #e3e7d8;
+  padding-top: 16px;
+  max-width: 530px;
+}
+.stay-explore-empty {
+  grid-column: 1/-1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 380px;
+  gap: 20px;
+  color: #899774;
+}
+.stay-explore-empty h2 {
+  font-size: 39px;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  color: #65754f;
+}
+.stay-explore-empty p {
+  font-size: 11px;
+  line-height: 1.85;
+  max-width: 260px;
+}
+.stay-explore-empty .stay-text-link {
+  font-size: 10px;
+}
+.stay-selected-map-villa {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 46px;
+  max-width: 350px;
+  z-index: 8;
+}
+.stay-selected-map-villa .stay-map-preview-card {
+  position: relative;
+  bottom: auto;
+  left: 0;
+  right: auto;
+  width: 100%;
+  max-width: none;
+}
+.stay-map-preview-close {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  color: #8a9779;
+  background: #fffef7;
+  padding: 3px;
+  border-radius: 50%;
+  z-index: 9;
+}
+.stay-mobile-map-toggle,
+.stay-mobile-search-edit {
+  display: none;
+}
+@media (max-width: 1100px) {
+  .stay-map-discovery {
+    margin-inline: 30px;
+    grid-template-columns: 0.85fr 1.25fr;
+  }
+  .stay-map-discovery-copy {
+    padding: 40px 30px;
+  }
+  .stay-map-discovery h2 {
+    font-size: 43px;
+  }
+  .stay-explore-list {
+    width: 47%;
+    padding: 20px;
+  }
+  .stay-explore-card-grid {
+    grid-template-columns: 1fr;
+    gap: 26px;
+  }
+  .stay-villa-compact {
+    display: grid;
+    grid-template-columns: 1fr 1.1fr;
+    gap: 16px;
+    align-items: center;
+  }
+  .stay-villa-compact .stay-villa-image {
+    aspect-ratio: 1/1.1;
+  }
+  .stay-villa-compact .stay-card-region {
+    margin-top: 0;
+  }
+  .stay-villa-compact .stay-villa-info h3 {
+    font-size: 25px;
+  }
+  .stay-villa-compact .stay-villa-price {
+    display: block;
+  }
+  .stay-villa-compact .stay-villa-price > span:last-child {
+    display: block;
+    margin-top: 4px;
+  }
+}
+@media (max-width: 767px) {
+  .stay-demo-notice {
+    display: block;
+    font-size: 9px;
+    line-height: 2;
+    margin-bottom: 20px;
+  }
+  .stay-demo-notice > span {
+    display: table;
+    margin-bottom: 6px;
+    font-size: 8px;
+  }
+  .stay-demo-badge {
+    top: 10px;
+    left: 10px;
+    font-size: 7px;
+    padding: 3px 7px;
+  }
+  .stay-example-card .stay-villa-info h3 {
+    font-size: 23px;
+  }
+  .stay-card-region {
+    font-size: 6px;
+    letter-spacing: 1px;
+    margin-top: 12px;
+  }
+  .stay-villa-price {
+    display: block;
+    margin-top: 13px;
+    padding-top: 10px;
+    font-size: 9px;
+  }
+  .stay-villa-price strong {
+    font-size: 14px;
+  }
+  .stay-villa-price > span:last-child {
+    display: block;
+    margin-top: 3px;
+    font-size: 7px;
+  }
+  .stay-example-dialog {
+    width: calc(100% - 22px) !important;
+    max-height: 92dvh;
+  }
+  .stay-example-photo {
+    height: 240px;
+  }
+  .stay-example-body {
+    padding: 24px;
+  }
+  .stay-example-body h2 {
+    font-size: 35px;
+  }
+  .stay-example-body > .stay-eyebrow {
+    font-size: 7px;
+    letter-spacing: 1px;
+    flex-wrap: wrap;
+  }
+  .stay-example-facts {
+    gap: 15px;
+    padding-block: 15px;
+    margin-block: 18px;
+  }
+  .stay-example-facts > span {
+    font-size: 10px;
+  }
+  .stay-example-facts svg {
+    width: 14px;
+  }
+  .stay-example-booking {
+    display: block;
+  }
+  .stay-example-booking > button {
+    width: 100%;
+    margin-top: 16px;
+  }
+  .stay-example-description {
+    font-size: 11px;
+  }
+  .stay-example-booking strong {
+    font-size: 24px;
+  }
+  .stay-demo-disclaimer {
+    font-size: 8px;
+  }
+  .stay-map-discovery {
+    margin: 0 22px 65px;
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+  .stay-map-discovery-copy {
+    padding: 35px 27px;
+  }
+  .stay-map-discovery h2 {
+    font-size: 41px;
+  }
+  .stay-map-discovery-copy > p:not(.stay-eyebrow) {
+    font-size: 11px;
+    max-width: none;
+  }
+  .stay-map-places {
+    margin-top: 20px;
+  }
+  .stay-discovery-map {
+    min-height: 440px;
+  }
+  .stay-map {
+    min-height: 300px;
+  }
+  .stay-map-top {
+    left: 14px;
+    right: 14px;
+    top: 14px;
+  }
+  .stay-map-style button {
+    font-size: 8px;
+    padding: 7px 11px;
+  }
+  .stay-price-pin {
+    font-size: 10px;
+    padding: 7px 10px;
+  }
+  .stay-map-preview-card {
+    left: 15px;
+    right: 15px;
+    bottom: 40px;
+    padding: 6px 12px 6px 6px;
+    gap: 12px;
+    width: calc(100% - 30px);
+    max-width: 330px;
+  }
+  .stay-map-preview-card > img {
+    width: 72px;
+    height: 78px;
+  }
+  .stay-map-preview-card h3 {
+    font-size: 23px;
+  }
+  .stay-map-preview-card > div > span {
+    font-size: 6px;
+  }
+  .stay-map-caption {
+    font-size: 6px;
+    letter-spacing: 1.3px;
+    right: 60px;
+    bottom: 22px;
+  }
+  .stay-map .maplibregl-ctrl-bottom-right {
+    right: 3px;
+    bottom: 16px;
+  }
+  .stay-map .maplibregl-ctrl-group button {
+    width: 31px;
+    height: 31px;
+  }
+  .stay-map .maplibregl-ctrl-attrib {
+    font-size: 7px;
+  }
+  .stay-explore-header {
+    height: 65px;
+    padding: 0 20px;
+    gap: 15px;
+  }
+  .stay-explore-header .stay-brand {
+    font-size: 27px;
+  }
+  .stay-explore-header .stay-brand small {
+    font-size: 5px;
+    letter-spacing: 1.2px;
+  }
+  .stay-explore-header .stay-account {
+    font-size: 9px;
+  }
+  .stay-explore-back {
+    display: none;
+  }
+  .stay-explore-search {
+    padding: 10px 15px 8px;
+  }
+  .stay-explore-search .stay-search-bar {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    min-height: 55px;
+    padding: 5px;
+  }
+  .stay-explore-search .stay-destination-field {
+    grid-column: auto;
+    border: 0;
+    min-height: 46px;
+    padding: 3px 9px;
+  }
+  .stay-explore-search .stay-search-field {
+    display: none;
+  }
+  .stay-explore-search .stay-search-submit {
+    grid-column: auto;
+    min-height: 42px;
+    height: 42px;
+    width: 42px;
+    padding: 10px;
+    margin: 0;
+  }
+  .stay-explore-search .stay-search-submit > span {
+    display: none;
+  }
+  .stay-mobile-search-edit {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    font-size: 9px;
+    color: #8d977c;
+    padding: 8px 4px 0;
+  }
+  .stay-explore-search.is-expanded .stay-search-bar {
+    grid-template-columns: 1fr 1fr;
+  }
+  .stay-explore-search.is-expanded .stay-destination-field {
+    grid-column: 1/-1;
+    border-bottom: 1px solid #e0e5d3;
+  }
+  .stay-explore-search.is-expanded .stay-search-field {
+    display: flex;
+    min-height: 62px;
+  }
+  .stay-explore-search.is-expanded .stay-search-submit {
+    grid-column: 1/-1;
+    width: auto;
+    margin-top: 5px;
+  }
+  .stay-explore-search.is-expanded .stay-search-submit > span {
+    display: inline;
+  }
+  .stay-explore-toolbar {
+    padding: 15px 20px;
+    gap: 12px;
+  }
+  .stay-explore-toolbar .stay-eyebrow {
+    font-size: 6px;
+    letter-spacing: 1.4px;
+  }
+  .stay-explore-toolbar h1 {
+    font-size: 26px;
+    max-width: 230px;
+    line-height: 1.12;
+  }
+  .stay-explore-controls {
+    gap: 0;
+  }
+  .stay-sort select {
+    font-size: 8px;
+    max-width: 130px;
+    padding-inline: 4px;
+  }
+  .stay-filter-toggle {
+    padding: 8px;
+    font-size: 9px;
+    gap: 5px;
+  }
+  .stay-explore-info {
+    padding: 10px 20px;
+    font-size: 8px;
+    gap: 10px;
+  }
+  .stay-explore-demo-note {
+    font-size: 7px;
+    max-width: 130px;
+    text-align: right;
+  }
+  .stay-explore-filters {
+    padding: 16px 20px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .stay-explore-filters > label {
+    font-size: 8px;
+  }
+  .stay-explore-filters select {
+    min-width: 130px;
+    max-width: 155px;
+    font-size: 10px;
+  }
+  .stay-explore-filters > button {
+    font-size: 9px;
+  }
+  .stay-explore-list {
+    width: 100%;
+    padding: 20px 20px 90px;
+  }
+  .stay-explore-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 25px 15px;
+  }
+  .stay-villa-compact {
+    display: block;
+  }
+  .stay-villa-compact .stay-villa-image {
+    aspect-ratio: 4/4.5;
+  }
+  .stay-villa-compact .stay-card-region {
+    margin-top: 12px;
+    font-size: 6px;
+  }
+  .stay-villa-compact .stay-villa-info h3 {
+    font-size: 23px;
+  }
+  .stay-villa-compact .stay-villa-details {
+    font-size: 8px;
+    gap: 8px;
+  }
+  .stay-villa-compact .stay-villa-details svg {
+    width: 11px;
+  }
+  .stay-view-list .stay-explore-map {
+    display: none;
+  }
+  .stay-view-map .stay-explore-list {
+    display: none;
+  }
+  .stay-view-map .stay-explore-map {
+    display: block;
+    width: 100%;
+  }
+  .stay-mobile-map-toggle {
+    position: fixed;
+    bottom: 23px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: block;
+    z-index: 35;
+  }
+  .stay-mobile-map-toggle > button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    white-space: nowrap;
+    background: #4c583e;
+    color: #fffdf3;
+    padding: 13px 21px;
+    border-radius: 4px;
+    box-shadow: 0 4px 20px #30452d26;
+    font-size: 11px;
+  }
+  .stay-selected-map-villa {
+    left: 15px;
+    right: 15px;
+    bottom: 82px;
+    max-width: 330px;
+  }
+  .stay-explore-empty {
+    min-height: 300px;
+  }
+  .stay-explore-empty h2 {
+    font-size: 34px;
+  }
+}
+@media (max-width: 380px) {
+  .stay-explore-toolbar h1 {
+    font-size: 23px;
+  }
+  .stay-sort {
+    display: none;
+  }
+  .stay-explore-header {
+    padding-inline: 16px;
+  }
+  .stay-explore-header .stay-account {
+    font-size: 8px;
+  }
+  .stay-example-card .stay-villa-info h3 {
+    font-size: 21px;
+  }
+  .stay-villa-details {
+    font-size: 8px;
+  }
+  .stay-explore-card-grid {
+    gap: 22px 12px;
+  }
+  .stay-example-photo {
+    height: 210px;
+  }
+  .stay-example-body {
+    padding: 20px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stay-map-loading > svg {
+    animation: none;
+  }
+}
+.stay-card-region {
+  font-size: 9px;
+  letter-spacing: 1.1px;
+}
+.stay-example-card .stay-villa-info h3 {
+  font-size: 28px;
+}
+.stay-villa-details {
+  font-size: 11px;
+}
+.stay-demo-badge {
+  font-size: 9px;
+}
+.stay-villa-price {
+  font-size: 11px;
+}
+.stay-villa-price strong {
+  font-size: 18px;
+}
+.stay-villa-price > span:last-child {
+  font-size: 9px;
+}
+.stay-demo-notice {
+  font-size: 11px;
+}
+.stay-demo-notice > span {
+  font-size: 10px;
+}
+.stay-example-description {
+  font-size: 14px;
+}
+.stay-example-facts > span {
+  font-size: 12px;
+}
+.stay-demo-disclaimer {
+  font-size: 10px;
+}
+.stay-map-discovery-copy > p:not(.stay-eyebrow) {
+  font-size: 13px;
+}
+.stay-map-places button {
+  font-size: 10px;
+  padding: 7px 10px;
+}
+.stay-map-discovery-copy > small {
+  font-size: 9px;
+}
+.stay-map-style button {
+  font-size: 10px;
+}
+.stay-price-pin {
+  font-size: 12px;
+  padding: 9px 14px;
+}
+.stay-explore-toolbar h1 {
+  font-size: 37px;
+}
+.stay-explore-info {
+  font-size: 11px;
+}
+.stay-explore-demo-note {
+  font-size: 10px;
+}
+.stay-villa-compact .stay-card-region {
+  font-size: 8px;
+}
+.stay-villa-compact .stay-villa-info h3 {
+  font-size: 26px;
+}
+.stay-explore-disclaimer {
+  font-size: 10px;
+}
+@media (max-width: 767px) {
+  .stay-example-card .stay-villa-info h3 {
+    font-size: 24px;
+  }
+  .stay-card-region,
+  .stay-villa-compact .stay-card-region {
+    font-size: 7px;
+  }
+  .stay-demo-badge {
+    font-size: 8px;
+  }
+  .stay-villa-price {
+    font-size: 10px;
+  }
+  .stay-villa-price strong {
+    font-size: 16px;
+  }
+  .stay-villa-price > span:last-child {
+    font-size: 8px;
+  }
+  .stay-demo-notice {
+    font-size: 10px;
+  }
+  .stay-demo-notice > span {
+    font-size: 9px;
+  }
+  .stay-villa-details {
+    font-size: 10px;
+  }
+  .stay-example-description {
+    font-size: 13px;
+  }
+  .stay-example-facts > span {
+    font-size: 11px;
+  }
+  .stay-demo-disclaimer {
+    font-size: 9px;
+  }
+  .stay-map-style button {
+    font-size: 9px;
+  }
+  .stay-price-pin {
+    font-size: 11px;
+    padding: 8px 11px;
+  }
+  .stay-explore-toolbar h1 {
+    font-size: 28px;
+  }
+  .stay-explore-info {
+    font-size: 9px;
+  }
+  .stay-explore-demo-note {
+    font-size: 8px;
+  }
+  .stay-explore-disclaimer {
+    font-size: 9px;
+  }
+}
+@media (max-width: 380px) {
+  .stay-example-card .stay-villa-info h3 {
+    font-size: 22px;
+  }
+  .stay-explore-toolbar h1 {
+    font-size: 24px;
+  }
+}
+/* Keep the preview thumbnail independent of full-bleed editorial image rules. */
+.stay-page .stay-map-preview-card > img {
+  width: 88px;
+  height: 90px;
+  flex: 0 0 88px;
+  object-fit: cover;
+}
+@media (max-width: 767px) {
+  .stay-page .stay-map-preview-card > img {
+    width: 72px;
+    height: 78px;
+    flex-basis: 72px;
+  }
+}
