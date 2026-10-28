@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Link } from "wouter";
 import { ArrowUpRight, House, LogOut } from "lucide-react";
+import BrandWordmark from "@/components/stay/BrandWordmark";
+import { BRAND } from "@/lib/brand";
 import "@/styles/stay.css";
 import "@/styles/account.css";
 
@@ -30,7 +32,8 @@ const ROLE_LABEL: Record<string, string> = {
 export function initialsOf(name?: string | null, email?: string | null) {
   const source = (name || email || "?").trim();
   const parts = source.split(/[\s@._-]+/).filter(Boolean);
-  const letters = parts.length > 1 ? parts[0][0] + parts[1][0] : source.slice(0, 2);
+  const letters =
+    parts.length > 1 ? parts[0][0] + parts[1][0] : source.slice(0, 2);
   return letters.toUpperCase();
 }
 
@@ -50,14 +53,12 @@ export function AccountShell<T extends string>({
         Vai al contenuto
       </a>
       <header className="stay-header">
-        <Link href="/" className="stay-brand" aria-label="LuxuryStay, pagina iniziale">
-          <span className="stay-brand-mark" aria-hidden="true">
-            <House size={21} strokeWidth={1.3} />
-          </span>
-          <span>
-            Luxury<span className="stay-brand-italic">Stay</span>
-            <small>EXCEPTIONAL PLACES. YOUR WAY.</small>
-          </span>
+        <Link
+          href="/"
+          className="stay-brand"
+          aria-label={`${BRAND.name}, pagina iniziale`}
+        >
+          <BrandWordmark />
         </Link>
         <nav className="stay-desktop-nav" aria-label="Navigazione principale">
           <Link href="/">Home</Link>
@@ -82,7 +83,9 @@ export function AccountShell<T extends string>({
               <p className="account-name">{user.name || "Il tuo account"}</p>
               {user.email && <p className="account-email">{user.email}</p>}
               {user.role && (
-                <p className="account-role">{ROLE_LABEL[user.role] ?? user.role}</p>
+                <p className="account-role">
+                  {ROLE_LABEL[user.role] ?? user.role}
+                </p>
               )}
             </div>
           </div>
