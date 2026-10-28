@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/lib/supabase";
+import { createServerSession, getAuthErrorMessage } from "@/lib/auth-errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +27,7 @@ async function signInWithProvider(provider: "google" | "apple") {
     provider,
     options: { redirectTo: CALLBACK_URL },
   });
-  if (error) toast.error(error.message);
+  if (error) throw error;
 }
 
 export default function Login() {
@@ -68,7 +69,7 @@ export default function Login() {
 
       await exchangeToken(accessToken);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Errore sconosciuto");
+      toast.error(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -76,8 +77,13 @@ export default function Login() {
 
   async function handleSocial(provider: "google" | "apple") {
     setSocialLoading(provider);
-    await signInWithProvider(provider);
-    setSocialLoading(null);
+    try {
+      await signInWithProvider(provider);
+    } catch (error: unknown) {
+      toast.error(getAuthErrorMessage(error));
+    } finally {
+      setSocialLoading(null);
+    }
   }
 
   return (
@@ -197,16 +203,7 @@ export default function Login() {
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 export async function exchangeToken(accessToken: string) {
-  const res = await fetch("/api/auth/supabase-session", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ access_token: accessToken }),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error((body as any).error ?? "Errore durante il login");
-  }
+  await createServerSession(accessToken);
   window.location.href = "/";
 }
 

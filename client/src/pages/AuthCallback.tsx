@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { getAuthErrorMessage } from "@/lib/auth-errors";
 import { exchangeToken } from "./Login";
 import { Loader2 } from "lucide-react";
 
@@ -38,7 +39,7 @@ export default function AuthCallback() {
 
         await exchangeToken(session.access_token);
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Errore durante il login");
+        setError(getAuthErrorMessage(err));
       }
     }
 

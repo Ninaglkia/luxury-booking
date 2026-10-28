@@ -30,6 +30,11 @@ export const oauthRouter = Router();
 
 // Dev-only login (crea utente dummy senza bisogno di credenziali)
 oauthRouter.get("/dev/login", async (req: Request, res: Response) => {
+  if (ENV.isProduction) {
+    res.sendStatus(404);
+    return;
+  }
+
   try {
     const dummyUser = {
       openId: "dev-user-123",
