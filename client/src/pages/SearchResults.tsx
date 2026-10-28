@@ -1,3 +1,5 @@
+import BrandWordmark from "@/components/stay/BrandWordmark";
+import { BRAND } from "@/lib/brand";
 import { useCallback, useMemo, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import {
@@ -131,14 +133,11 @@ export function VillaExplorer({ mapFirst = false }: { mapFirst?: boolean }) {
   return (
     <div className="stay-page stay-explore-page">
       <header className="stay-explore-header">
-        <Link href="/" className="stay-brand">
+        <Link href="/" className="stay-brand" aria-label={`${BRAND.name}, pagina iniziale`}>
           <span className="stay-brand-mark">
             <House size={21} strokeWidth={1.3} />
           </span>
-          <span>
-            Luxury<span className="stay-brand-italic">Stay</span>
-            <small>EXCEPTIONAL PLACES. YOUR WAY.</small>
-          </span>
+          <BrandWordmark />
         </Link>
         <Link href="/" className="stay-explore-back">
           <ArrowLeft size={14} />

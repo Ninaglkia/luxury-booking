@@ -1,3 +1,4 @@
+import { BRAND } from "@/lib/brand";
 import { useEffect, useRef, useState } from "react";
 import type { Map as MapLibreMap, Marker as MapLibreMarker } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
@@ -288,7 +289,9 @@ export default function StayMap({
           </button>
         </div>
       )}
-      <span className="stay-map-caption">LUXURYSTAY · LUOGHI DA VIVERE</span>
+      <span className="stay-map-caption">
+        {BRAND.name.toUpperCase()} · LUOGHI DA VIVERE
+      </span>
     </div>
   );
 }

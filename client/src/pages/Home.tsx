@@ -1,3 +1,5 @@
+import BrandWordmark from "@/components/stay/BrandWordmark";
+import { BRAND } from "@/lib/brand";
 import { useState } from "react";
 import { Link } from "wouter";
 import {
@@ -92,15 +94,12 @@ export default function Home() {
         <Link
           href="/"
           className="stay-brand"
-          aria-label="LuxuryStay, pagina iniziale"
+          aria-label={`${BRAND.name}, pagina iniziale`}
         >
           <span className="stay-brand-mark" aria-hidden="true">
             <House size={21} strokeWidth={1.3} />
           </span>
-          <span>
-            Luxury<span className="stay-brand-italic">Stay</span>
-            <small>EXCEPTIONAL PLACES. YOUR WAY.</small>
-          </span>
+          <BrandWordmark />
         </Link>
         <nav className="stay-desktop-nav" aria-label="Navigazione principale">
           <a href="#collection">Le nostre ville</a>
@@ -419,7 +418,7 @@ export default function Home() {
             </span>
           </div>
           <div className="stay-philosophy-copy">
-            <p className="stay-eyebrow">IL MONDO LUXURYSTAY</p>
+            <p className="stay-eyebrow">IL MONDO {BRAND.name.toUpperCase()}</p>
             <h2>
               Non solo una villa.
               <br />
@@ -468,7 +467,7 @@ export default function Home() {
         <div className="stay-footer-main">
           <div>
             <Link href="/" className="stay-footer-brand">
-              Luxury<em>Stay</em>
+              <BrandWordmark tagline={false} />
             </Link>
             <p>Luoghi speciali. Il tuo modo di viverli.</p>
           </div>
@@ -494,7 +493,9 @@ export default function Home() {
           </div>
         </div>
         <div className="stay-footer-bottom">
-          <span>© {new Date().getFullYear()} LuxuryStay</span>
+          <span>
+            © {new Date().getFullYear()} {BRAND.name}
+          </span>
           <span>Fatto per chi ama i bei posti.</span>
           <a href="#main-content">
             Torna su <ArrowUpRight size={14} />

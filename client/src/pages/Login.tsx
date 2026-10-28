@@ -1,3 +1,5 @@
+import BrandWordmark from "@/components/stay/BrandWordmark";
+import { BRAND } from "@/lib/brand";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -102,7 +104,7 @@ export default function Login() {
       <aside className="stay-auth-photo">
         <img src="/images/stay-hero.jpg" alt="" />
         <a href="/" className="stay-auth-brand">
-          Luxury<em>Stay</em>
+          <BrandWordmark tagline={false} />
         </a>
         <div>
           <span>IL TUO PROSSIMO RICORDO</span>
@@ -115,7 +117,7 @@ export default function Login() {
       </aside>
       <div className="stay-auth-form">
         <a href="/" className="stay-auth-back">
-          ← Torna a LuxuryStay
+          ← Torna a {BRAND.name}
         </a>
         <Card className="w-full max-w-md stay-auth-card">
           <CardHeader className="text-center">

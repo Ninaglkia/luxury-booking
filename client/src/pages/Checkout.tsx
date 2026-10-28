@@ -168,7 +168,7 @@ export default function Checkout() {
             <div className="w-7 h-7 rounded-lg bg-rose-500 text-white flex items-center justify-center">
               <Sparkles className="w-3.5 h-3.5" />
             </div>
-            <span className="font-bold text-rose-500">LuxuryStay</span>
+            <span className="font-bold text-rose-500">BnB Villa</span>
           </div>
         </div>
       </nav>

@@ -104,7 +104,7 @@ export default function BankAccount() {
               <div className="flex items-center gap-2 cursor-pointer">
                 <Sparkles className="w-8 h-8 text-primary" />
                 <span className="text-2xl font-serif font-bold text-gradient-gold">
-                  Luxury Booking
+                  BnB Villa
                 </span>
               </div>
             </Link>
@@ -131,7 +131,7 @@ export default function BankAccount() {
               <div className="flex items-center gap-2 cursor-pointer">
                 <Sparkles className="w-8 h-8 text-primary" />
                 <span className="text-2xl font-serif font-bold text-gradient-gold">
-                  Luxury Booking
+                  BnB Villa
                 </span>
               </div>
             </Link>
@@ -163,7 +163,7 @@ export default function BankAccount() {
               <div className="flex items-center gap-2 cursor-pointer">
                 <Sparkles className="w-8 h-8 text-primary" />
                 <span className="text-2xl font-serif font-bold text-gradient-gold">
-                  Luxury Booking
+                  BnB Villa
                 </span>
               </div>
             </Link>

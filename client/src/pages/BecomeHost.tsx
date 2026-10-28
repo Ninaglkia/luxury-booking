@@ -49,7 +49,7 @@ export default function BecomeHost() {
               <div className="flex items-center gap-2 cursor-pointer">
                 <Sparkles className="w-8 h-8 text-primary" />
                 <span className="text-2xl font-serif font-bold text-gradient-gold">
-                  Luxury Booking
+                  BnB Villa
                 </span>
               </div>
             </Link>
@@ -66,7 +66,7 @@ export default function BecomeHost() {
         <div className="container">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-5xl md:text-6xl font-serif font-bold mb-6 text-gradient-gold">
-              Diventa Host su Luxury Booking
+              Diventa Host su BnB Villa
             </h1>
             <p className="text-xl text-muted-foreground mb-8">
               Condividi la tua villa di lusso con ospiti selezionati da tutto il mondo 
