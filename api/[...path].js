@@ -18,17 +18,15 @@ function isSecureRequest(req) {
   if (req.protocol === "https") return true;
   const forwardedProto = req.headers["x-forwarded-proto"];
   if (!forwardedProto) return false;
-  const protoList = Array.isArray(forwardedProto)
-    ? forwardedProto
-    : forwardedProto.split(",");
-  return protoList.some(proto => proto.trim().toLowerCase() === "https");
+  const protoList = Array.isArray(forwardedProto) ? forwardedProto : forwardedProto.split(",");
+  return protoList.some((proto) => proto.trim().toLowerCase() === "https");
 }
 function getSessionCookieOptions(req) {
   return {
     httpOnly: true,
     path: "/",
     sameSite: "none",
-    secure: isSecureRequest(req),
+    secure: isSecureRequest(req)
   };
 }
 
@@ -49,40 +47,33 @@ var ENV = {
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   supabaseUrl: (process.env.VITE_SUPABASE_URL ?? "").replace(/\s+/g, ""),
-  supabaseAnonKey: (process.env.VITE_SUPABASE_ANON_KEY ?? "").replace(
-    /\s+/g,
-    ""
-  ),
-  supabaseServiceRoleKey: (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").replace(
-    /\s+/g,
-    ""
-  ),
+  supabaseAnonKey: (process.env.VITE_SUPABASE_ANON_KEY ?? "").replace(/\s+/g, ""),
+  supabaseServiceRoleKey: (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").replace(/\s+/g, "")
 };
 
 // server/_core/notification.ts
 var TITLE_MAX_LENGTH = 1200;
 var CONTENT_MAX_LENGTH = 2e4;
-var trimValue = value => value.trim();
-var isNonEmptyString = value =>
-  typeof value === "string" && value.trim().length > 0;
-var buildEndpointUrl = baseUrl => {
+var trimValue = (value) => value.trim();
+var isNonEmptyString = (value) => typeof value === "string" && value.trim().length > 0;
+var buildEndpointUrl = (baseUrl) => {
   const normalizedBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
   return new URL(
     "webdevtoken.v1.WebDevService/SendNotification",
     normalizedBase
   ).toString();
 };
-var validatePayload = input => {
+var validatePayload = (input) => {
   if (!isNonEmptyString(input.title)) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "Notification title is required.",
+      message: "Notification title is required."
     });
   }
   if (!isNonEmptyString(input.content)) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "Notification content is required.",
+      message: "Notification content is required."
     });
   }
   const title = trimValue(input.title);
@@ -90,13 +81,13 @@ var validatePayload = input => {
   if (title.length > TITLE_MAX_LENGTH) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: `Notification title must be at most ${TITLE_MAX_LENGTH} characters.`,
+      message: `Notification title must be at most ${TITLE_MAX_LENGTH} characters.`
     });
   }
   if (content.length > CONTENT_MAX_LENGTH) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: `Notification content must be at most ${CONTENT_MAX_LENGTH} characters.`,
+      message: `Notification content must be at most ${CONTENT_MAX_LENGTH} characters.`
     });
   }
   return { title, content };
@@ -106,13 +97,13 @@ async function notifyOwner(payload) {
   if (!ENV.forgeApiUrl) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: "Notification service URL is not configured.",
+      message: "Notification service URL is not configured."
     });
   }
   if (!ENV.forgeApiKey) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: "Notification service API key is not configured.",
+      message: "Notification service API key is not configured."
     });
   }
   const endpoint = buildEndpointUrl(ENV.forgeApiUrl);
@@ -123,9 +114,9 @@ async function notifyOwner(payload) {
         accept: "application/json",
         authorization: `Bearer ${ENV.forgeApiKey}`,
         "content-type": "application/json",
-        "connect-protocol-version": "1",
+        "connect-protocol-version": "1"
       },
-      body: JSON.stringify({ title, content }),
+      body: JSON.stringify({ title, content })
     });
     if (!response.ok) {
       const detail = await response.text().catch(() => "");
@@ -145,11 +136,11 @@ async function notifyOwner(payload) {
 import { initTRPC, TRPCError as TRPCError2 } from "@trpc/server";
 import superjson from "superjson";
 var t = initTRPC.context().create({
-  transformer: superjson,
+  transformer: superjson
 });
 var router = t.router;
 var publicProcedure = t.procedure;
-var requireUser = t.middleware(async opts => {
+var requireUser = t.middleware(async (opts) => {
   const { ctx, next } = opts;
   if (!ctx.user) {
     throw new TRPCError2({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
@@ -157,13 +148,13 @@ var requireUser = t.middleware(async opts => {
   return next({
     ctx: {
       ...ctx,
-      user: ctx.user,
-    },
+      user: ctx.user
+    }
   });
 });
 var protectedProcedure = t.procedure.use(requireUser);
 var adminProcedure = t.procedure.use(
-  t.middleware(async opts => {
+  t.middleware(async (opts) => {
     const { ctx, next } = opts;
     if (!ctx.user || ctx.user.role !== "admin") {
       throw new TRPCError2({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
@@ -171,36 +162,32 @@ var adminProcedure = t.procedure.use(
     return next({
       ctx: {
         ...ctx,
-        user: ctx.user,
-      },
+        user: ctx.user
+      }
     });
   })
 );
 
 // server/_core/systemRouter.ts
 var systemRouter = router({
-  health: publicProcedure
-    .input(
-      z.object({
-        timestamp: z.number().min(0, "timestamp cannot be negative"),
-      })
-    )
-    .query(() => ({
-      ok: true,
-    })),
-  notifyOwner: adminProcedure
-    .input(
-      z.object({
-        title: z.string().min(1, "title is required"),
-        content: z.string().min(1, "content is required"),
-      })
-    )
-    .mutation(async ({ input }) => {
-      const delivered = await notifyOwner(input);
-      return {
-        success: delivered,
-      };
-    }),
+  health: publicProcedure.input(
+    z.object({
+      timestamp: z.number().min(0, "timestamp cannot be negative")
+    })
+  ).query(() => ({
+    ok: true
+  })),
+  notifyOwner: adminProcedure.input(
+    z.object({
+      title: z.string().min(1, "title is required"),
+      content: z.string().min(1, "content is required")
+    })
+  ).mutation(async ({ input }) => {
+    const delivered = await notifyOwner(input);
+    return {
+      success: delivered
+    };
+  })
 });
 
 // server/db.ts
@@ -209,16 +196,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 // drizzle/schema.ts
-import {
-  pgTable,
-  serial,
-  text,
-  boolean,
-  timestamp,
-  doublePrecision,
-  integer,
-  pgEnum,
-} from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, timestamp, doublePrecision, integer, pgEnum } from "drizzle-orm/pg-core";
 var roleEnum = pgEnum("role", ["guest", "host", "admin"]);
 var users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -243,14 +221,9 @@ var users = pgTable("users", {
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
   // onUpdateNow not supported directly in pg-core usually, handled by triggers or manual update
-  lastSignedIn: timestamp("lastSignedIn").notNull().defaultNow(),
+  lastSignedIn: timestamp("lastSignedIn").notNull().defaultNow()
 });
-var statusEnum = pgEnum("status", [
-  "pending",
-  "approved",
-  "rejected",
-  "inactive",
-]);
+var statusEnum = pgEnum("status", ["pending", "approved", "rejected", "inactive"]);
 var properties = pgTable("properties", {
   id: serial("id").primaryKey(),
   hostId: integer("hostId").notNull(),
@@ -278,7 +251,7 @@ var properties = pgTable("properties", {
   checkOutTime: text("checkOutTime").default("11:00"),
   minimumStay: integer("minimumStay").default(1),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow()
 });
 var propertyImages = pgTable("propertyImages", {
   id: serial("id").primaryKey(),
@@ -289,7 +262,7 @@ var propertyImages = pgTable("propertyImages", {
   caption: text("caption"),
   displayOrder: integer("displayOrder").default(0),
   isCover: boolean("isCover").default(false),
-  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  createdAt: timestamp("createdAt").notNull().defaultNow()
 });
 var amenities = pgTable("amenities", {
   id: serial("id").primaryKey(),
@@ -298,26 +271,16 @@ var amenities = pgTable("amenities", {
   // Lucide icon name
   category: text("category").notNull(),
   // view, facility, service, etc.
-  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  createdAt: timestamp("createdAt").notNull().defaultNow()
 });
 var propertyAmenities = pgTable("propertyAmenities", {
   id: serial("id").primaryKey(),
   propertyId: integer("propertyId").notNull(),
   amenityId: integer("amenityId").notNull(),
-  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  createdAt: timestamp("createdAt").notNull().defaultNow()
 });
-var bookingStatusEnum = pgEnum("bookingStatus", [
-  "pending",
-  "confirmed",
-  "cancelled",
-  "completed",
-]);
-var paymentStatusEnum = pgEnum("paymentStatus", [
-  "pending",
-  "paid",
-  "refunded",
-  "failed",
-]);
+var bookingStatusEnum = pgEnum("bookingStatus", ["pending", "confirmed", "cancelled", "completed"]);
+var paymentStatusEnum = pgEnum("paymentStatus", ["pending", "paid", "refunded", "failed"]);
 var bookings = pgTable("bookings", {
   id: serial("id").primaryKey(),
   propertyId: integer("propertyId").notNull(),
@@ -330,16 +293,14 @@ var bookings = pgTable("bookings", {
   status: bookingStatusEnum("status").default("pending").notNull(),
   // Payment info
   stripePaymentIntentId: text("stripePaymentIntentId"),
-  paymentStatus: paymentStatusEnum("paymentStatus")
-    .default("pending")
-    .notNull(),
+  paymentStatus: paymentStatusEnum("paymentStatus").default("pending").notNull(),
   // Guest info
   guestName: text("guestName").notNull(),
   guestEmail: text("guestEmail").notNull(),
   guestPhone: text("guestPhone"),
   specialRequests: text("specialRequests"),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow()
 });
 var reviews = pgTable("reviews", {
   id: serial("id").primaryKey(),
@@ -356,7 +317,7 @@ var reviews = pgTable("reviews", {
   locationRating: integer("locationRating"),
   valueRating: integer("valueRating"),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow()
 });
 var messages = pgTable("messages", {
   id: serial("id").primaryKey(),
@@ -367,7 +328,7 @@ var messages = pgTable("messages", {
   receiverId: integer("receiverId").notNull(),
   content: text("content").notNull(),
   isRead: boolean("isRead").default(false),
-  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  createdAt: timestamp("createdAt").notNull().defaultNow()
 });
 var availabilityCalendar = pgTable("availabilityCalendar", {
   id: serial("id").primaryKey(),
@@ -378,7 +339,7 @@ var availabilityCalendar = pgTable("availabilityCalendar", {
   // booked, blocked_by_host, maintenance
   bookingId: integer("bookingId"),
   // If blocked due to booking
-  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  createdAt: timestamp("createdAt").notNull().defaultNow()
 });
 var notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
@@ -390,13 +351,13 @@ var notifications = pgTable("notifications", {
   relatedId: integer("relatedId"),
   // ID of related entity (booking, property, message, etc.)
   isRead: boolean("isRead").default(false),
-  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  createdAt: timestamp("createdAt").notNull().defaultNow()
 });
 var wishlist = pgTable("wishlist", {
   id: serial("id").primaryKey(),
   userId: integer("userId").notNull(),
   propertyId: integer("propertyId").notNull(),
-  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  createdAt: timestamp("createdAt").notNull().defaultNow()
 });
 var bankAccounts = pgTable("bankAccounts", {
   id: serial("id").primaryKey(),
@@ -413,7 +374,7 @@ var bankAccounts = pgTable("bankAccounts", {
   isVerified: boolean("isVerified").default(false),
   verifiedAt: timestamp("verifiedAt"),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow()
 });
 
 // server/db.ts
@@ -428,7 +389,7 @@ async function getDb() {
         connect_timeout: 10,
         // Required for Supabase PgBouncer (transaction mode, port 6543):
         // extended query protocol (prepared statements) is not supported.
-        prepare: false,
+        prepare: false
       });
       _db = drizzle(client);
     } catch (error) {
@@ -448,7 +409,7 @@ async function upsertUser(user) {
   }
   try {
     const values = {
-      openId: user.openId,
+      openId: user.openId
     };
     const updateSet = {};
     const textFields = [
@@ -457,9 +418,9 @@ async function upsertUser(user) {
       "loginMethod",
       "phone",
       "bio",
-      "avatar",
+      "avatar"
     ];
-    const assignNullable = field => {
+    const assignNullable = (field) => {
       const value = user[field];
       if (value === void 0) return;
       const normalized = value ?? null;
@@ -486,7 +447,7 @@ async function upsertUser(user) {
     }
     await db.insert(users).values(values).onConflictDoUpdate({
       target: users.openId,
-      set: updateSet,
+      set: updateSet
     });
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
@@ -497,11 +458,7 @@ async function getUserByOpenId(openId) {
   const db = await getDb();
   if (!db) return null;
   try {
-    const result = await db
-      .select()
-      .from(users)
-      .where(eq(users.openId, openId))
-      .limit(1);
+    const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
     return result[0] || null;
   } catch (error) {
     console.error("[Database] Failed to get user by openId:", error);
@@ -522,10 +479,7 @@ async function getApprovedProperties() {
   const db = await getDb();
   if (!db) return [];
   try {
-    return await db
-      .select()
-      .from(properties)
-      .where(eq(properties.status, "approved"));
+    return await db.select().from(properties).where(eq(properties.status, "approved"));
   } catch (error) {
     console.error("[Database] Failed to get approved properties:", error);
     return [];
@@ -535,11 +489,7 @@ async function getPropertyById(id) {
   const db = await getDb();
   if (!db) return null;
   try {
-    const result = await db
-      .select()
-      .from(properties)
-      .where(eq(properties.id, id))
-      .limit(1);
+    const result = await db.select().from(properties).where(eq(properties.id, id)).limit(1);
     return result[0] || null;
   } catch (error) {
     console.error("[Database] Failed to get property by id:", error);
@@ -550,11 +500,7 @@ async function getPropertyImages(propertyId) {
   const db = await getDb();
   if (!db) return [];
   try {
-    return await db
-      .select()
-      .from(propertyImages)
-      .where(eq(propertyImages.propertyId, propertyId))
-      .orderBy(propertyImages.displayOrder);
+    return await db.select().from(propertyImages).where(eq(propertyImages.propertyId, propertyId)).orderBy(propertyImages.displayOrder);
   } catch (error) {
     console.error("[Database] Failed to get property images:", error);
     return [];
@@ -564,16 +510,12 @@ async function getPropertyAmenities(propertyId) {
   const db = await getDb();
   if (!db) return [];
   try {
-    const result = await db
-      .select({
-        id: amenities.id,
-        name: amenities.name,
-        icon: amenities.icon,
-        category: amenities.category,
-      })
-      .from(propertyAmenities)
-      .innerJoin(amenities, eq(propertyAmenities.amenityId, amenities.id))
-      .where(eq(propertyAmenities.propertyId, propertyId));
+    const result = await db.select({
+      id: amenities.id,
+      name: amenities.name,
+      icon: amenities.icon,
+      category: amenities.category
+    }).from(propertyAmenities).innerJoin(amenities, eq(propertyAmenities.amenityId, amenities.id)).where(eq(propertyAmenities.propertyId, propertyId));
     return result;
   } catch (error) {
     console.error("[Database] Failed to get property amenities:", error);
@@ -584,12 +526,9 @@ async function getPropertyAverageRating(propertyId) {
   const db = await getDb();
   if (!db) return 0;
   try {
-    const result = await db
-      .select({
-        avgRating: sql`avg(${reviews.rating})`,
-      })
-      .from(reviews)
-      .where(eq(reviews.propertyId, propertyId));
+    const result = await db.select({
+      avgRating: sql`avg(${reviews.rating})`
+    }).from(reviews).where(eq(reviews.propertyId, propertyId));
     return Number(result[0]?.avgRating) || 0;
   } catch (error) {
     console.error("[Database] Failed to get property rating:", error);
@@ -600,10 +539,7 @@ async function getPropertiesByHost(hostId) {
   const db = await getDb();
   if (!db) return [];
   try {
-    return await db
-      .select()
-      .from(properties)
-      .where(eq(properties.hostId, hostId));
+    return await db.select().from(properties).where(eq(properties.hostId, hostId));
   } catch (error) {
     console.error("[Database] Failed to get properties by host:", error);
     return [];
@@ -613,10 +549,7 @@ async function createProperty(data) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   try {
-    const [result] = await db
-      .insert(properties)
-      .values(data)
-      .returning({ id: properties.id });
+    const [result] = await db.insert(properties).values(data).returning({ id: properties.id });
     return result.id;
   } catch (error) {
     console.error("[Database] Failed to create property:", error);
@@ -657,10 +590,7 @@ async function createAmenity(data) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   try {
-    const [result] = await db
-      .insert(amenities)
-      .values(data)
-      .returning({ id: amenities.id });
+    const [result] = await db.insert(amenities).values(data).returning({ id: amenities.id });
     return result.id;
   } catch (error) {
     console.error("[Database] Failed to create amenity:", error);
@@ -671,10 +601,7 @@ async function getPendingProperties() {
   const db = await getDb();
   if (!db) return [];
   try {
-    return await db
-      .select()
-      .from(properties)
-      .where(eq(properties.status, "pending"));
+    return await db.select().from(properties).where(eq(properties.status, "pending"));
   } catch (error) {
     console.error("[Database] Failed to get pending properties:", error);
     return [];
@@ -684,10 +611,7 @@ async function updatePropertyStatus(propertyId, status, rejectionReason) {
   const db = await getDb();
   if (!db) return;
   try {
-    await db
-      .update(properties)
-      .set({ status, rejectionReason })
-      .where(eq(properties.id, propertyId));
+    await db.update(properties).set({ status, rejectionReason }).where(eq(properties.id, propertyId));
   } catch (error) {
     console.error("[Database] Failed to update property status:", error);
     throw error;
@@ -697,16 +621,11 @@ async function getBookingsByGuest(guestId) {
   const db = await getDb();
   if (!db) return [];
   try {
-    const result = await db
-      .select({
-        booking: bookings,
-        property: properties,
-      })
-      .from(bookings)
-      .innerJoin(properties, eq(bookings.propertyId, properties.id))
-      .where(eq(bookings.guestId, guestId))
-      .orderBy(desc(bookings.createdAt));
-    return result.map(r => ({ ...r.booking, property: r.property }));
+    const result = await db.select({
+      booking: bookings,
+      property: properties
+    }).from(bookings).innerJoin(properties, eq(bookings.propertyId, properties.id)).where(eq(bookings.guestId, guestId)).orderBy(desc(bookings.createdAt));
+    return result.map((r) => ({ ...r.booking, property: r.property }));
   } catch (error) {
     console.error("[Database] Failed to get bookings by guest:", error);
     return [];
@@ -716,22 +635,16 @@ async function getBookingsByHost(hostId) {
   const db = await getDb();
   if (!db) return [];
   try {
-    const result = await db
-      .select({
-        booking: bookings,
-        property: properties,
-        guest: users,
-      })
-      .from(bookings)
-      .innerJoin(properties, eq(bookings.propertyId, properties.id))
-      .innerJoin(users, eq(bookings.guestId, users.id))
-      .where(eq(bookings.hostId, hostId))
-      .orderBy(desc(bookings.createdAt));
-    return result.map(r => ({
+    const result = await db.select({
+      booking: bookings,
+      property: properties,
+      guest: users
+    }).from(bookings).innerJoin(properties, eq(bookings.propertyId, properties.id)).innerJoin(users, eq(bookings.guestId, users.id)).where(eq(bookings.hostId, hostId)).orderBy(desc(bookings.createdAt));
+    return result.map((r) => ({
       ...r.booking,
       property: r.property,
       guestName: r.guest.name || r.booking.guestName,
-      guestEmail: r.guest.email || r.booking.guestEmail,
+      guestEmail: r.guest.email || r.booking.guestEmail
     }));
   } catch (error) {
     console.error("[Database] Failed to get bookings by host:", error);
@@ -742,29 +655,23 @@ async function checkPropertyAvailability(propertyId, checkIn, checkOut) {
   const db = await getDb();
   if (!db) return false;
   try {
-    const overlaps = await db
-      .select({ count: count() })
-      .from(bookings)
-      .where(
-        and(
-          eq(bookings.propertyId, propertyId),
-          inArray(bookings.status, ["confirmed", "pending"]),
-          lte(bookings.checkInDate, checkOut),
-          gte(bookings.checkOutDate, checkIn)
-        )
-      );
+    const overlaps = await db.select({ count: count() }).from(bookings).where(
+      and(
+        eq(bookings.propertyId, propertyId),
+        inArray(bookings.status, ["confirmed", "pending"]),
+        lte(bookings.checkInDate, checkOut),
+        gte(bookings.checkOutDate, checkIn)
+      )
+    );
     if (overlaps[0].count > 0) return false;
-    const blocked = await db
-      .select({ count: count() })
-      .from(availabilityCalendar)
-      .where(
-        and(
-          eq(availabilityCalendar.propertyId, propertyId),
-          eq(availabilityCalendar.isAvailable, false),
-          gte(availabilityCalendar.date, checkIn),
-          lte(availabilityCalendar.date, checkOut)
-        )
-      );
+    const blocked = await db.select({ count: count() }).from(availabilityCalendar).where(
+      and(
+        eq(availabilityCalendar.propertyId, propertyId),
+        eq(availabilityCalendar.isAvailable, false),
+        gte(availabilityCalendar.date, checkIn),
+        lte(availabilityCalendar.date, checkOut)
+      )
+    );
     return blocked[0].count === 0;
   } catch (error) {
     console.error("[Database] Failed to check availability:", error);
@@ -775,10 +682,7 @@ async function createBooking(data) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   try {
-    const [result] = await db
-      .insert(bookings)
-      .values(data)
-      .returning({ id: bookings.id });
+    const [result] = await db.insert(bookings).values(data).returning({ id: bookings.id });
     return result.id;
   } catch (error) {
     console.error("[Database] Failed to create booking:", error);
@@ -789,11 +693,7 @@ async function getBookingById(id) {
   const db = await getDb();
   if (!db) return null;
   try {
-    const result = await db
-      .select()
-      .from(bookings)
-      .where(eq(bookings.id, id))
-      .limit(1);
+    const result = await db.select().from(bookings).where(eq(bookings.id, id)).limit(1);
     return result[0] || null;
   } catch (error) {
     console.error("[Database] Failed to get booking by id:", error);
@@ -804,19 +704,14 @@ async function getReviewsByProperty(propertyId) {
   const db = await getDb();
   if (!db) return [];
   try {
-    const result = await db
-      .select({
-        review: reviews,
-        guest: users,
-      })
-      .from(reviews)
-      .innerJoin(users, eq(reviews.guestId, users.id))
-      .where(eq(reviews.propertyId, propertyId))
-      .orderBy(desc(reviews.createdAt));
-    return result.map(r => ({
+    const result = await db.select({
+      review: reviews,
+      guest: users
+    }).from(reviews).innerJoin(users, eq(reviews.guestId, users.id)).where(eq(reviews.propertyId, propertyId)).orderBy(desc(reviews.createdAt));
+    return result.map((r) => ({
       ...r.review,
       guestName: r.guest.name || "Anonymous",
-      guestAvatar: r.guest.avatar,
+      guestAvatar: r.guest.avatar
     }));
   } catch (error) {
     console.error("[Database] Failed to get reviews:", error);
@@ -827,12 +722,9 @@ async function hasUserReviewedBooking(bookingId, userId) {
   const db = await getDb();
   if (!db) return false;
   try {
-    const result = await db
-      .select({ count: count() })
-      .from(reviews)
-      .where(
-        and(eq(reviews.bookingId, bookingId), eq(reviews.guestId, userId))
-      );
+    const result = await db.select({ count: count() }).from(reviews).where(
+      and(eq(reviews.bookingId, bookingId), eq(reviews.guestId, userId))
+    );
     return result[0].count > 0;
   } catch (error) {
     console.error("[Database] Failed to check review status:", error);
@@ -843,10 +735,7 @@ async function createReview(data) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   try {
-    const [result] = await db
-      .insert(reviews)
-      .values(data)
-      .returning({ id: reviews.id });
+    const [result] = await db.insert(reviews).values(data).returning({ id: reviews.id });
     return result.id;
   } catch (error) {
     console.error("[Database] Failed to create review:", error);
@@ -857,11 +746,7 @@ async function getConversationMessages(conversationId) {
   const db = await getDb();
   if (!db) return [];
   try {
-    return await db
-      .select()
-      .from(messages)
-      .where(eq(messages.conversationId, conversationId))
-      .orderBy(messages.createdAt);
+    return await db.select().from(messages).where(eq(messages.conversationId, conversationId)).orderBy(messages.createdAt);
   } catch (error) {
     console.error("[Database] Failed to get messages:", error);
     return [];
@@ -871,10 +756,7 @@ async function createMessage(data) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   try {
-    const [result] = await db
-      .insert(messages)
-      .values(data)
-      .returning({ id: messages.id });
+    const [result] = await db.insert(messages).values(data).returning({ id: messages.id });
     return result.id;
   } catch (error) {
     console.error("[Database] Failed to create message:", error);
@@ -885,16 +767,13 @@ async function markMessagesAsRead(conversationId, userId) {
   const db = await getDb();
   if (!db) return;
   try {
-    await db
-      .update(messages)
-      .set({ isRead: true })
-      .where(
-        and(
-          eq(messages.conversationId, conversationId),
-          eq(messages.receiverId, userId),
-          eq(messages.isRead, false)
-        )
-      );
+    await db.update(messages).set({ isRead: true }).where(
+      and(
+        eq(messages.conversationId, conversationId),
+        eq(messages.receiverId, userId),
+        eq(messages.isRead, false)
+      )
+    );
   } catch (error) {
     console.error("[Database] Failed to mark messages as read:", error);
     throw error;
@@ -904,10 +783,7 @@ async function getUnreadMessageCount(userId) {
   const db = await getDb();
   if (!db) return 0;
   try {
-    const result = await db
-      .select({ count: count() })
-      .from(messages)
-      .where(and(eq(messages.receiverId, userId), eq(messages.isRead, false)));
+    const result = await db.select({ count: count() }).from(messages).where(and(eq(messages.receiverId, userId), eq(messages.isRead, false)));
     return result[0].count;
   } catch (error) {
     console.error("[Database] Failed to get unread message count:", error);
@@ -918,10 +794,7 @@ async function createNotification(data) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   try {
-    const [result] = await db
-      .insert(notifications)
-      .values(data)
-      .returning({ id: notifications.id });
+    const [result] = await db.insert(notifications).values(data).returning({ id: notifications.id });
     return result.id;
   } catch (error) {
     console.error("[Database] Failed to create notification:", error);
@@ -932,11 +805,7 @@ async function getUserNotifications(userId) {
   const db = await getDb();
   if (!db) return [];
   try {
-    return await db
-      .select()
-      .from(notifications)
-      .where(eq(notifications.userId, userId))
-      .orderBy(desc(notifications.createdAt));
+    return await db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt));
   } catch (error) {
     console.error("[Database] Failed to get user notifications:", error);
     return [];
@@ -946,10 +815,7 @@ async function markNotificationAsRead(id) {
   const db = await getDb();
   if (!db) return;
   try {
-    await db
-      .update(notifications)
-      .set({ isRead: true })
-      .where(eq(notifications.id, id));
+    await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id));
   } catch (error) {
     console.error("[Database] Failed to mark notification as read:", error);
     throw error;
@@ -959,12 +825,9 @@ async function getUnreadNotificationCount(userId) {
   const db = await getDb();
   if (!db) return 0;
   try {
-    const result = await db
-      .select({ count: count() })
-      .from(notifications)
-      .where(
-        and(eq(notifications.userId, userId), eq(notifications.isRead, false))
-      );
+    const result = await db.select({ count: count() }).from(notifications).where(
+      and(eq(notifications.userId, userId), eq(notifications.isRead, false))
+    );
     return result[0].count;
   } catch (error) {
     console.error("[Database] Failed to get unread notification count:", error);
@@ -981,13 +844,12 @@ var messagingRouter = router({
     const db = await getDb();
     if (!db) throw new Error("Database not available");
     const userId = ctx.user.id;
-    const userMessages = await db
-      .select()
-      .from(messages)
-      .where(
-        or(eq2(messages.senderId, userId), eq2(messages.receiverId, userId))
+    const userMessages = await db.select().from(messages).where(
+      or(
+        eq2(messages.senderId, userId),
+        eq2(messages.receiverId, userId)
       )
-      .orderBy(desc2(messages.createdAt));
+    ).orderBy(desc2(messages.createdAt));
     const conversationsMap = /* @__PURE__ */ new Map();
     for (const msg of userMessages) {
       if (!conversationsMap.has(msg.conversationId)) {
@@ -997,7 +859,7 @@ var messagingRouter = router({
           otherUserId: msg.senderId === userId ? msg.receiverId : msg.senderId,
           lastMessage: msg.content,
           lastMessageAt: msg.createdAt,
-          unreadCount: 0,
+          unreadCount: 0
         });
       }
       if (msg.receiverId === userId && !msg.isRead) {
@@ -1008,86 +870,57 @@ var messagingRouter = router({
     return Array.from(conversationsMap.values());
   }),
   // Get messages for a specific conversation
-  getMessages: protectedProcedure
-    .input(
-      z2.object({
-        conversationId: z2.string(),
-      })
-    )
-    .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      const conversationMessages = await db
-        .select()
-        .from(messages)
-        .where(eq2(messages.conversationId, input.conversationId))
-        .orderBy(messages.createdAt);
-      await db
-        .update(messages)
-        .set({ isRead: true })
-        .where(
-          and2(
-            eq2(messages.conversationId, input.conversationId),
-            eq2(messages.receiverId, ctx.user.id),
-            eq2(messages.isRead, false)
-          )
-        );
-      return conversationMessages;
-    }),
+  getMessages: protectedProcedure.input(z2.object({
+    conversationId: z2.string()
+  })).query(async ({ ctx, input }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    const conversationMessages = await db.select().from(messages).where(eq2(messages.conversationId, input.conversationId)).orderBy(messages.createdAt);
+    await db.update(messages).set({ isRead: true }).where(
+      and2(
+        eq2(messages.conversationId, input.conversationId),
+        eq2(messages.receiverId, ctx.user.id),
+        eq2(messages.isRead, false)
+      )
+    );
+    return conversationMessages;
+  }),
   // Send a new message
-  sendMessage: protectedProcedure
-    .input(
-      z2.object({
-        propertyId: z2.number(),
-        receiverId: z2.number(),
-        content: z2.string().min(1),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      const senderId = ctx.user.id;
-      const userIds = [senderId, input.receiverId].sort((a, b) => a - b);
-      const conversationId = `${input.propertyId}-${userIds[0]}-${userIds[1]}`;
-      const [newMessage] = await db
-        .insert(messages)
-        .values({
-          conversationId,
-          propertyId: input.propertyId,
-          senderId,
-          receiverId: input.receiverId,
-          content: input.content,
-          isRead: false,
-        })
-        .returning({ id: messages.id });
-      const createdMessage = await db
-        .select()
-        .from(messages)
-        .where(eq2(messages.id, newMessage.id))
-        .limit(1);
-      return createdMessage[0];
-    }),
+  sendMessage: protectedProcedure.input(z2.object({
+    propertyId: z2.number(),
+    receiverId: z2.number(),
+    content: z2.string().min(1)
+  })).mutation(async ({ ctx, input }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    const senderId = ctx.user.id;
+    const userIds = [senderId, input.receiverId].sort((a, b) => a - b);
+    const conversationId = `${input.propertyId}-${userIds[0]}-${userIds[1]}`;
+    const [newMessage] = await db.insert(messages).values({
+      conversationId,
+      propertyId: input.propertyId,
+      senderId,
+      receiverId: input.receiverId,
+      content: input.content,
+      isRead: false
+    }).returning({ id: messages.id });
+    const createdMessage = await db.select().from(messages).where(eq2(messages.id, newMessage.id)).limit(1);
+    return createdMessage[0];
+  }),
   // Mark conversation as read
-  markAsRead: protectedProcedure
-    .input(
-      z2.object({
-        conversationId: z2.string(),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      await db
-        .update(messages)
-        .set({ isRead: true })
-        .where(
-          and2(
-            eq2(messages.conversationId, input.conversationId),
-            eq2(messages.receiverId, ctx.user.id)
-          )
-        );
-      return { success: true };
-    }),
+  markAsRead: protectedProcedure.input(z2.object({
+    conversationId: z2.string()
+  })).mutation(async ({ ctx, input }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    await db.update(messages).set({ isRead: true }).where(
+      and2(
+        eq2(messages.conversationId, input.conversationId),
+        eq2(messages.receiverId, ctx.user.id)
+      )
+    );
+    return { success: true };
+  })
 });
 
 // server/verification.ts
@@ -1099,113 +932,87 @@ function generateVerificationCode() {
 }
 var verificationRouter = router({
   // Request verification code
-  requestCode: protectedProcedure
-    .input(
-      z3.object({
-        phone: z3.string().min(10),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      const code = generateVerificationCode();
-      const expiry = new Date(Date.now() + 10 * 60 * 1e3);
-      await db
-        .update(users)
-        .set({
-          phone: input.phone,
-          verificationCode: code,
-          verificationCodeExpiry: expiry,
-        })
-        .where(eq3(users.id, ctx.user.id));
-      console.log(`[Verification] Code for user ${ctx.user.id}: ${code}`);
-      return {
-        success: true,
-        message: "Codice di verifica inviato al tuo numero",
-        // Remove this in production:
-        debugCode: process.env.NODE_ENV === "development" ? code : void 0,
-      };
-    }),
+  requestCode: protectedProcedure.input(z3.object({
+    phone: z3.string().min(10)
+  })).mutation(async ({ ctx, input }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    const code = generateVerificationCode();
+    const expiry = new Date(Date.now() + 10 * 60 * 1e3);
+    await db.update(users).set({
+      phone: input.phone,
+      verificationCode: code,
+      verificationCodeExpiry: expiry
+    }).where(eq3(users.id, ctx.user.id));
+    console.log(`[Verification] Code for user ${ctx.user.id}: ${code}`);
+    return {
+      success: true,
+      message: "Codice di verifica inviato al tuo numero",
+      // Remove this in production:
+      debugCode: process.env.NODE_ENV === "development" ? code : void 0
+    };
+  }),
   // Verify code
-  verifyCode: protectedProcedure
-    .input(
-      z3.object({
-        code: z3.string().length(6),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq3(users.id, ctx.user.id))
-        .limit(1);
-      if (!user) {
-        throw new TRPCError3({
-          code: "NOT_FOUND",
-          message: "Utente non trovato",
-        });
-      }
-      if (!user.verificationCode || !user.verificationCodeExpiry) {
-        throw new TRPCError3({
-          code: "BAD_REQUEST",
-          message: "Nessun codice di verifica richiesto",
-        });
-      }
-      if (/* @__PURE__ */ new Date() > user.verificationCodeExpiry) {
-        throw new TRPCError3({
-          code: "BAD_REQUEST",
-          message: "Codice di verifica scaduto",
-        });
-      }
-      if (user.verificationCode !== input.code) {
-        throw new TRPCError3({
-          code: "BAD_REQUEST",
-          message: "Codice di verifica non valido",
-        });
-      }
-      await db
-        .update(users)
-        .set({
-          isVerified: true,
-          verificationCode: null,
-          verificationCodeExpiry: null,
-        })
-        .where(eq3(users.id, ctx.user.id));
-      return {
-        success: true,
-        message: "Account verificato con successo!",
-      };
-    }),
+  verifyCode: protectedProcedure.input(z3.object({
+    code: z3.string().length(6)
+  })).mutation(async ({ ctx, input }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    const [user] = await db.select().from(users).where(eq3(users.id, ctx.user.id)).limit(1);
+    if (!user) {
+      throw new TRPCError3({
+        code: "NOT_FOUND",
+        message: "Utente non trovato"
+      });
+    }
+    if (!user.verificationCode || !user.verificationCodeExpiry) {
+      throw new TRPCError3({
+        code: "BAD_REQUEST",
+        message: "Nessun codice di verifica richiesto"
+      });
+    }
+    if (/* @__PURE__ */ new Date() > user.verificationCodeExpiry) {
+      throw new TRPCError3({
+        code: "BAD_REQUEST",
+        message: "Codice di verifica scaduto"
+      });
+    }
+    if (user.verificationCode !== input.code) {
+      throw new TRPCError3({
+        code: "BAD_REQUEST",
+        message: "Codice di verifica non valido"
+      });
+    }
+    await db.update(users).set({
+      isVerified: true,
+      verificationCode: null,
+      verificationCodeExpiry: null
+    }).where(eq3(users.id, ctx.user.id));
+    return {
+      success: true,
+      message: "Account verificato con successo!"
+    };
+  }),
   // Upload identity document
-  uploadDocument: protectedProcedure
-    .input(
-      z3.object({
-        documentType: z3.enum(["passport", "id_card", "driver_license"]),
-        documentNumber: z3.string(),
-        documentUrl: z3.string().url(),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      await db
-        .update(users)
-        .set({
-          idDocumentType: input.documentType,
-          idDocumentNumber: input.documentNumber,
-          idDocumentUrl: input.documentUrl,
-          idDocumentVerified: false,
-          // Admin will verify
-        })
-        .where(eq3(users.id, ctx.user.id));
-      return {
-        success: true,
-        message:
-          "Documento caricato con successo. Verr\xE0 verificato dal nostro team.",
-      };
-    }),
+  uploadDocument: protectedProcedure.input(z3.object({
+    documentType: z3.enum(["passport", "id_card", "driver_license"]),
+    documentNumber: z3.string(),
+    documentUrl: z3.string().url()
+  })).mutation(async ({ ctx, input }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    await db.update(users).set({
+      idDocumentType: input.documentType,
+      idDocumentNumber: input.documentNumber,
+      idDocumentUrl: input.documentUrl,
+      idDocumentVerified: false
+      // Admin will verify
+    }).where(eq3(users.id, ctx.user.id));
+    return {
+      success: true,
+      message: "Documento caricato con successo. Verr\xE0 verificato dal nostro team."
+    };
+  })
 });
 
 // server/wishlist.ts
@@ -1216,106 +1023,76 @@ var wishlistRouter = router({
   getWishlist: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
-    const items = await db
-      .select({
-        id: wishlist.id,
-        propertyId: wishlist.propertyId,
-        createdAt: wishlist.createdAt,
-        property: properties,
-      })
-      .from(wishlist)
-      .leftJoin(properties, eq4(wishlist.propertyId, properties.id))
-      .where(eq4(wishlist.userId, ctx.user.id));
+    const items = await db.select({
+      id: wishlist.id,
+      propertyId: wishlist.propertyId,
+      createdAt: wishlist.createdAt,
+      property: properties
+    }).from(wishlist).leftJoin(properties, eq4(wishlist.propertyId, properties.id)).where(eq4(wishlist.userId, ctx.user.id));
     const enrichedItems = await Promise.all(
-      items.map(async item => {
+      items.map(async (item) => {
         if (!item.property) return item;
-        const [firstImage] = await db
-          .select()
-          .from(propertyImages)
-          .where(eq4(propertyImages.propertyId, item.property.id))
-          .limit(1);
+        const [firstImage] = await db.select().from(propertyImages).where(eq4(propertyImages.propertyId, item.property.id)).limit(1);
         return {
           ...item,
           property: {
             ...item.property,
-            firstImage: firstImage?.imageUrl || null,
-          },
+            firstImage: firstImage?.imageUrl || null
+          }
         };
       })
     );
     return enrichedItems;
   }),
   // Add property to wishlist
-  addToWishlist: protectedProcedure
-    .input(
-      z4.object({
-        propertyId: z4.number(),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      const existing = await db
-        .select()
-        .from(wishlist)
-        .where(
-          and3(
-            eq4(wishlist.userId, ctx.user.id),
-            eq4(wishlist.propertyId, input.propertyId)
-          )
-        )
-        .limit(1);
-      if (existing.length > 0) {
-        return { success: true, message: "Gi\xE0 nei preferiti" };
-      }
-      await db.insert(wishlist).values({
-        userId: ctx.user.id,
-        propertyId: input.propertyId,
-      });
-      return { success: true, message: "Aggiunto ai preferiti" };
-    }),
+  addToWishlist: protectedProcedure.input(z4.object({
+    propertyId: z4.number()
+  })).mutation(async ({ ctx, input }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    const existing = await db.select().from(wishlist).where(
+      and3(
+        eq4(wishlist.userId, ctx.user.id),
+        eq4(wishlist.propertyId, input.propertyId)
+      )
+    ).limit(1);
+    if (existing.length > 0) {
+      return { success: true, message: "Gi\xE0 nei preferiti" };
+    }
+    await db.insert(wishlist).values({
+      userId: ctx.user.id,
+      propertyId: input.propertyId
+    });
+    return { success: true, message: "Aggiunto ai preferiti" };
+  }),
   // Remove from wishlist
-  removeFromWishlist: protectedProcedure
-    .input(
-      z4.object({
-        propertyId: z4.number(),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      await db
-        .delete(wishlist)
-        .where(
-          and3(
-            eq4(wishlist.userId, ctx.user.id),
-            eq4(wishlist.propertyId, input.propertyId)
-          )
-        );
-      return { success: true, message: "Rimosso dai preferiti" };
-    }),
+  removeFromWishlist: protectedProcedure.input(z4.object({
+    propertyId: z4.number()
+  })).mutation(async ({ ctx, input }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    await db.delete(wishlist).where(
+      and3(
+        eq4(wishlist.userId, ctx.user.id),
+        eq4(wishlist.propertyId, input.propertyId)
+      )
+    );
+    return { success: true, message: "Rimosso dai preferiti" };
+  }),
   // Check if property is in wishlist
-  isInWishlist: protectedProcedure
-    .input(
-      z4.object({
-        propertyId: z4.number(),
-      })
-    )
-    .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      const result = await db
-        .select()
-        .from(wishlist)
-        .where(
-          and3(
-            eq4(wishlist.userId, ctx.user.id),
-            eq4(wishlist.propertyId, input.propertyId)
-          )
-        )
-        .limit(1);
-      return result.length > 0;
-    }),
+  isInWishlist: protectedProcedure.input(z4.object({
+    propertyId: z4.number()
+  })).query(async ({ ctx, input }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    const result = await db.select().from(wishlist).where(
+      and3(
+        eq4(wishlist.userId, ctx.user.id),
+        eq4(wishlist.propertyId, input.propertyId)
+      )
+    ).limit(1);
+    return result.length > 0;
+  })
 });
 
 // server/bankAccounts.ts
@@ -1332,18 +1109,14 @@ function validateIBAN(iban) {
     return false;
   }
   const rearranged = cleanIban.slice(4) + cleanIban.slice(0, 4);
-  const numericIban = rearranged
-    .split("")
-    .map(char => {
-      const code = char.charCodeAt(0);
-      return code >= 65 && code <= 90 ? (code - 55).toString() : char;
-    })
-    .join("");
+  const numericIban = rearranged.split("").map((char) => {
+    const code = char.charCodeAt(0);
+    return code >= 65 && code <= 90 ? (code - 55).toString() : char;
+  }).join("");
   let remainder = numericIban;
   while (remainder.length > 2) {
     const block = remainder.slice(0, 9);
-    remainder =
-      (parseInt(block, 10) % 97).toString() + remainder.slice(block.length);
+    remainder = (parseInt(block, 10) % 97).toString() + remainder.slice(block.length);
   }
   return parseInt(remainder, 10) % 97 === 1;
 }
@@ -1360,85 +1133,72 @@ var bankAccountsRouter = router({
     if (ctx.user.role !== "host" && ctx.user.role !== "admin") {
       throw new TRPCError4({
         code: "FORBIDDEN",
-        message: "Solo i proprietari possono accedere ai dati bancari",
+        message: "Solo i proprietari possono accedere ai dati bancari"
       });
     }
-    const [account] = await db
-      .select()
-      .from(bankAccounts)
-      .where(eq5(bankAccounts.userId, ctx.user.id))
-      .limit(1);
+    const [account] = await db.select().from(bankAccounts).where(eq5(bankAccounts.userId, ctx.user.id)).limit(1);
     if (!account) {
       return null;
     }
     return {
       ...account,
-      ibanMasked: maskIBAN(account.iban),
+      ibanMasked: maskIBAN(account.iban)
     };
   }),
   // Add or update bank account
-  upsertBankAccount: protectedProcedure
-    .input(
-      z5.object({
-        iban: z5.string().min(15).max(34),
-        bankName: z5.string().min(2).max(255),
-        accountHolderName: z5.string().min(2).max(255),
-        swift: z5.string().min(8).max(11).optional(),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-      if (ctx.user.role !== "host" && ctx.user.role !== "admin") {
-        throw new TRPCError4({
-          code: "FORBIDDEN",
-          message: "Solo i proprietari possono gestire i dati bancari",
-        });
-      }
-      const cleanIban = input.iban.replace(/\s/g, "").toUpperCase();
-      if (!validateIBAN(cleanIban)) {
-        throw new TRPCError4({
-          code: "BAD_REQUEST",
-          message: "IBAN non valido. Verifica il codice inserito.",
-        });
-      }
-      const [existing] = await db
-        .select()
-        .from(bankAccounts)
-        .where(eq5(bankAccounts.userId, ctx.user.id))
-        .limit(1);
-      if (existing) {
-        await db
-          .update(bankAccounts)
-          .set({
-            iban: cleanIban,
-            bankName: input.bankName,
-            accountHolderName: input.accountHolderName,
-            swift: input.swift || null,
-            isVerified: false,
-            // Reset verification on update
-            updatedAt: /* @__PURE__ */ new Date(),
-          })
-          .where(eq5(bankAccounts.userId, ctx.user.id));
-        return {
-          success: true,
-          message: "Dati bancari aggiornati con successo",
-        };
-      } else {
-        await db.insert(bankAccounts).values({
-          userId: ctx.user.id,
-          iban: cleanIban,
-          bankName: input.bankName,
-          accountHolderName: input.accountHolderName,
-          swift: input.swift || null,
-          isVerified: false,
-        });
-        return {
-          success: true,
-          message: "Dati bancari aggiunti con successo",
-        };
-      }
-    }),
+  upsertBankAccount: protectedProcedure.input(
+    z5.object({
+      iban: z5.string().min(15).max(34),
+      bankName: z5.string().min(2).max(255),
+      accountHolderName: z5.string().min(2).max(255),
+      swift: z5.string().min(8).max(11).optional()
+    })
+  ).mutation(async ({ ctx, input }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    if (ctx.user.role !== "host" && ctx.user.role !== "admin") {
+      throw new TRPCError4({
+        code: "FORBIDDEN",
+        message: "Solo i proprietari possono gestire i dati bancari"
+      });
+    }
+    const cleanIban = input.iban.replace(/\s/g, "").toUpperCase();
+    if (!validateIBAN(cleanIban)) {
+      throw new TRPCError4({
+        code: "BAD_REQUEST",
+        message: "IBAN non valido. Verifica il codice inserito."
+      });
+    }
+    const [existing] = await db.select().from(bankAccounts).where(eq5(bankAccounts.userId, ctx.user.id)).limit(1);
+    if (existing) {
+      await db.update(bankAccounts).set({
+        iban: cleanIban,
+        bankName: input.bankName,
+        accountHolderName: input.accountHolderName,
+        swift: input.swift || null,
+        isVerified: false,
+        // Reset verification on update
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where(eq5(bankAccounts.userId, ctx.user.id));
+      return {
+        success: true,
+        message: "Dati bancari aggiornati con successo"
+      };
+    } else {
+      await db.insert(bankAccounts).values({
+        userId: ctx.user.id,
+        iban: cleanIban,
+        bankName: input.bankName,
+        accountHolderName: input.accountHolderName,
+        swift: input.swift || null,
+        isVerified: false
+      });
+      return {
+        success: true,
+        message: "Dati bancari aggiunti con successo"
+      };
+    }
+  }),
   // Delete bank account
   deleteBankAccount: protectedProcedure.mutation(async ({ ctx }) => {
     const db = await getDb();
@@ -1446,15 +1206,15 @@ var bankAccountsRouter = router({
     if (ctx.user.role !== "host" && ctx.user.role !== "admin") {
       throw new TRPCError4({
         code: "FORBIDDEN",
-        message: "Solo i proprietari possono eliminare i dati bancari",
+        message: "Solo i proprietari possono eliminare i dati bancari"
       });
     }
     await db.delete(bankAccounts).where(eq5(bankAccounts.userId, ctx.user.id));
     return {
       success: true,
-      message: "Dati bancari eliminati con successo",
+      message: "Dati bancari eliminati con successo"
     };
-  }),
+  })
 });
 
 // server/routers.ts
@@ -1462,7 +1222,7 @@ var adminProcedure2 = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") {
     throw new TRPCError5({
       code: "FORBIDDEN",
-      message: "Solo gli amministratori possono accedere a questa risorsa",
+      message: "Solo gli amministratori possono accedere a questa risorsa"
     });
   }
   return next({ ctx });
@@ -1471,12 +1231,12 @@ var hostProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "host" && ctx.user.role !== "admin") {
     throw new TRPCError5({
       code: "FORBIDDEN",
-      message: "Solo i proprietari possono accedere a questa risorsa",
+      message: "Solo i proprietari possono accedere a questa risorsa"
     });
   }
   return next({ ctx });
 });
-var coerceNumber = value => {
+var coerceNumber = (value) => {
   if (value === null || value === void 0) return void 0;
   if (typeof value === "string" && value.trim() === "") return void 0;
   const num = typeof value === "number" ? value : Number(value);
@@ -1489,38 +1249,34 @@ var appRouter = router({
   wishlist: wishlistRouter,
   bankAccounts: bankAccountsRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true };
     }),
-    updateProfile: protectedProcedure
-      .input(
-        z6.object({
-          name: z6.string().optional(),
-          phone: z6.string().optional(),
-          bio: z6.string().optional(),
-          avatar: z6.string().optional(),
-        })
-      )
-      .mutation(async ({ ctx, input }) => {
-        await upsertUser({
-          openId: ctx.user.openId,
-          ...input,
-        });
-        return { success: true };
-      }),
+    updateProfile: protectedProcedure.input(z6.object({
+      name: z6.string().optional(),
+      phone: z6.string().optional(),
+      bio: z6.string().optional(),
+      avatar: z6.string().optional()
+    })).mutation(async ({ ctx, input }) => {
+      await upsertUser({
+        openId: ctx.user.openId,
+        ...input
+      });
+      return { success: true };
+    }),
     becomeHost: protectedProcedure.mutation(async ({ ctx }) => {
       if (ctx.user.role === "host" || ctx.user.role === "admin") {
         throw new TRPCError5({
           code: "BAD_REQUEST",
-          message: "Sei gi\xE0 un proprietario",
+          message: "Sei gi\xE0 un proprietario"
         });
       }
       await updateUserRole(ctx.user.id, "host");
       return { success: true, message: "Ora sei un proprietario!" };
-    }),
+    })
   }),
   properties: router({
     // Public: Get all approved properties
@@ -1529,122 +1285,93 @@ var appRouter = router({
       return properties2;
     }),
     // Public: Get property by ID with images and amenities
-    getById: publicProcedure
-      .input(z6.object({ id: z6.number() }))
-      .query(async ({ input }) => {
-        const property = await getPropertyById(input.id);
-        if (!property) {
-          throw new TRPCError5({
-            code: "NOT_FOUND",
-            message: "Propriet\xE0 non trovata",
-          });
-        }
-        const images = await getPropertyImages(input.id);
-        const amenities2 = await getPropertyAmenities(input.id);
-        const rating = await getPropertyAverageRating(input.id);
-        return { ...property, images, amenities: amenities2, rating };
-      }),
+    getById: publicProcedure.input(z6.object({ id: z6.number() })).query(async ({ input }) => {
+      const property = await getPropertyById(input.id);
+      if (!property) {
+        throw new TRPCError5({ code: "NOT_FOUND", message: "Propriet\xE0 non trovata" });
+      }
+      const images = await getPropertyImages(input.id);
+      const amenities2 = await getPropertyAmenities(input.id);
+      const rating = await getPropertyAverageRating(input.id);
+      return { ...property, images, amenities: amenities2, rating };
+    }),
     // Host: Get my properties
     myProperties: hostProcedure.query(async ({ ctx }) => {
       return await getPropertiesByHost(ctx.user.id);
     }),
     // Host: Create new property
-    create: hostProcedure
-      .input(
-        z6.object({
-          title: z6
-            .string()
-            .min(10, "Il titolo deve contenere almeno 10 caratteri"),
-          description: z6
-            .string()
-            .min(50, "La descrizione deve contenere almeno 50 caratteri"),
-          propertyType: z6.string(),
-          pricePerNight: z6.preprocess(coerceNumber, z6.number().positive()),
-          maxGuests: z6.number().min(1),
-          bedrooms: z6.number().min(1),
-          bathrooms: z6.number().min(1),
-          squareMeters: z6.number().optional(),
-          country: z6.string(),
-          city: z6.string(),
-          address: z6.string(),
-          latitude: z6.preprocess(coerceNumber, z6.number()).optional(),
-          longitude: z6.preprocess(coerceNumber, z6.number()).optional(),
-          checkInTime: z6.string().default("15:00"),
-          checkOutTime: z6.string().default("11:00"),
-          minimumStay: z6.number().default(1),
-        })
-      )
-      .mutation(async ({ ctx, input }) => {
-        const propertyId = await createProperty({
-          ...input,
-          hostId: ctx.user.id,
-          status: "pending",
-        });
-        await createNotification({
-          userId: ctx.user.id,
-          type: "property_submitted",
-          title: "Propriet\xE0 inviata per approvazione",
-          message: `La tua propriet\xE0 "${input.title}" \xE8 stata inviata per l'approvazione dell'amministratore.`,
-          relatedId: propertyId,
-        });
-        return { success: true, propertyId };
-      }),
+    create: hostProcedure.input(z6.object({
+      title: z6.string().min(10, "Il titolo deve contenere almeno 10 caratteri"),
+      description: z6.string().min(50, "La descrizione deve contenere almeno 50 caratteri"),
+      propertyType: z6.string(),
+      pricePerNight: z6.preprocess(coerceNumber, z6.number().positive()),
+      maxGuests: z6.number().min(1),
+      bedrooms: z6.number().min(1),
+      bathrooms: z6.number().min(1),
+      squareMeters: z6.number().optional(),
+      country: z6.string(),
+      city: z6.string(),
+      address: z6.string(),
+      latitude: z6.preprocess(coerceNumber, z6.number()).optional(),
+      longitude: z6.preprocess(coerceNumber, z6.number()).optional(),
+      checkInTime: z6.string().default("15:00"),
+      checkOutTime: z6.string().default("11:00"),
+      minimumStay: z6.number().default(1)
+    })).mutation(async ({ ctx, input }) => {
+      const propertyId = await createProperty({
+        ...input,
+        hostId: ctx.user.id,
+        status: "pending"
+      });
+      await createNotification({
+        userId: ctx.user.id,
+        type: "property_submitted",
+        title: "Propriet\xE0 inviata per approvazione",
+        message: `La tua propriet\xE0 "${input.title}" \xE8 stata inviata per l'approvazione dell'amministratore.`,
+        relatedId: propertyId
+      });
+      return { success: true, propertyId };
+    }),
     // Host: Add images to property
-    addImages: hostProcedure
-      .input(
-        z6.object({
-          propertyId: z6.number(),
-          images: z6.array(
-            z6.object({
-              imageUrl: z6.string(),
-              imageKey: z6.string(),
-              caption: z6.string().optional(),
-              isCover: z6.boolean().default(false),
-            })
-          ),
-        })
-      )
-      .mutation(async ({ ctx, input }) => {
-        const property = await getPropertyById(input.propertyId);
-        if (!property || property.hostId !== ctx.user.id) {
-          throw new TRPCError5({
-            code: "FORBIDDEN",
-            message: "Non autorizzato",
-          });
-        }
-        for (let i = 0; i < input.images.length; i++) {
-          await addPropertyImage({
-            propertyId: input.propertyId,
-            ...input.images[i],
-            displayOrder: i,
-          });
-        }
-        return { success: true };
-      }),
+    addImages: hostProcedure.input(z6.object({
+      propertyId: z6.number(),
+      images: z6.array(z6.object({
+        imageUrl: z6.string(),
+        imageKey: z6.string(),
+        caption: z6.string().optional(),
+        isCover: z6.boolean().default(false)
+      }))
+    })).mutation(async ({ ctx, input }) => {
+      const property = await getPropertyById(input.propertyId);
+      if (!property || property.hostId !== ctx.user.id) {
+        throw new TRPCError5({ code: "FORBIDDEN", message: "Non autorizzato" });
+      }
+      for (let i = 0; i < input.images.length; i++) {
+        await addPropertyImage({
+          propertyId: input.propertyId,
+          ...input.images[i],
+          displayOrder: i
+        });
+      }
+      return { success: true };
+    }),
     // Host: Add amenities to property
-    addAmenities: hostProcedure
-      .input(
-        z6.object({
-          propertyId: z6.number(),
-          amenityIds: z6.array(z6.number()),
-        })
-      )
-      .mutation(async ({ ctx, input }) => {
-        const property = await getPropertyById(input.propertyId);
-        if (!property || property.hostId !== ctx.user.id) {
-          throw new TRPCError5({
-            code: "FORBIDDEN",
-            message: "Non autorizzato",
-          });
-        }
-        for (const amenityId of input.amenityIds) {
-          await addPropertyAmenity({
-            propertyId: input.propertyId,
-            amenityId,
-          });
-        }
-        return { success: true };
-      }),
+    addAmenities: hostProcedure.input(z6.object({
+      propertyId: z6.number(),
+      amenityIds: z6.array(z6.number())
+    })).mutation(async ({ ctx, input }) => {
+      const property = await getPropertyById(input.propertyId);
+      if (!property || property.hostId !== ctx.user.id) {
+        throw new TRPCError5({ code: "FORBIDDEN", message: "Non autorizzato" });
+      }
+      for (const amenityId of input.amenityIds) {
+        await addPropertyAmenity({
+          propertyId: input.propertyId,
+          amenityId
+        });
+      }
+      return { success: true };
+    })
   }),
   amenities: router({
     // Public: Get all amenities
@@ -1652,18 +1379,14 @@ var appRouter = router({
       return await getAllAmenities();
     }),
     // Admin: Create amenity
-    create: adminProcedure2
-      .input(
-        z6.object({
-          name: z6.string(),
-          icon: z6.string().optional(),
-          category: z6.string(),
-        })
-      )
-      .mutation(async ({ input }) => {
-        const amenityId = await createAmenity(input);
-        return { success: true, amenityId };
-      }),
+    create: adminProcedure2.input(z6.object({
+      name: z6.string(),
+      icon: z6.string().optional(),
+      category: z6.string()
+    })).mutation(async ({ input }) => {
+      const amenityId = await createAmenity(input);
+      return { success: true, amenityId };
+    })
   }),
   admin: router({
     // Get pending properties for approval
@@ -1671,47 +1394,27 @@ var appRouter = router({
       return await getPendingProperties();
     }),
     // Approve or reject property
-    reviewProperty: adminProcedure2
-      .input(
-        z6.object({
-          propertyId: z6.number(),
-          action: z6.enum(["approve", "reject"]),
-          rejectionReason: z6.string().optional(),
-        })
-      )
-      .mutation(async ({ input }) => {
-        const property = await getPropertyById(input.propertyId);
-        if (!property) {
-          throw new TRPCError5({
-            code: "NOT_FOUND",
-            message: "Propriet\xE0 non trovata",
-          });
-        }
-        const newStatus = input.action === "approve" ? "approved" : "rejected";
-        await updatePropertyStatus(
-          input.propertyId,
-          newStatus,
-          input.rejectionReason
-        );
-        const message =
-          input.action === "approve"
-            ? `La tua propriet\xE0 "${property.title}" \xE8 stata approvata ed \xE8 ora visibile sulla piattaforma!`
-            : `La tua propriet\xE0 "${property.title}" \xE8 stata rifiutata. Motivo: ${input.rejectionReason || "Non specificato"}`;
-        await createNotification({
-          userId: property.hostId,
-          type:
-            input.action === "approve"
-              ? "property_approved"
-              : "property_rejected",
-          title:
-            input.action === "approve"
-              ? "Propriet\xE0 approvata!"
-              : "Propriet\xE0 rifiutata",
-          message,
-          relatedId: input.propertyId,
-        });
-        return { success: true };
-      }),
+    reviewProperty: adminProcedure2.input(z6.object({
+      propertyId: z6.number(),
+      action: z6.enum(["approve", "reject"]),
+      rejectionReason: z6.string().optional()
+    })).mutation(async ({ input }) => {
+      const property = await getPropertyById(input.propertyId);
+      if (!property) {
+        throw new TRPCError5({ code: "NOT_FOUND", message: "Propriet\xE0 non trovata" });
+      }
+      const newStatus = input.action === "approve" ? "approved" : "rejected";
+      await updatePropertyStatus(input.propertyId, newStatus, input.rejectionReason);
+      const message = input.action === "approve" ? `La tua propriet\xE0 "${property.title}" \xE8 stata approvata ed \xE8 ora visibile sulla piattaforma!` : `La tua propriet\xE0 "${property.title}" \xE8 stata rifiutata. Motivo: ${input.rejectionReason || "Non specificato"}`;
+      await createNotification({
+        userId: property.hostId,
+        type: input.action === "approve" ? "property_approved" : "property_rejected",
+        title: input.action === "approve" ? "Propriet\xE0 approvata!" : "Propriet\xE0 rifiutata",
+        message,
+        relatedId: input.propertyId
+      });
+      return { success: true };
+    })
   }),
   bookings: router({
     // Protected: Get my bookings as guest
@@ -1723,212 +1426,159 @@ var appRouter = router({
       return await getBookingsByHost(ctx.user.id);
     }),
     // Protected: Create booking
-    create: protectedProcedure
-      .input(
-        z6.object({
-          propertyId: z6.number(),
-          checkInDate: z6.date(),
-          checkOutDate: z6.date(),
-          numberOfGuests: z6.number(),
-          guestName: z6.string(),
-          guestEmail: z6.string().email(),
-          guestPhone: z6.string().optional(),
-          specialRequests: z6.string().optional(),
-        })
-      )
-      .mutation(async ({ ctx, input }) => {
-        const property = await getPropertyById(input.propertyId);
-        if (!property) {
-          throw new TRPCError5({
-            code: "NOT_FOUND",
-            message: "Propriet\xE0 non trovata",
-          });
-        }
-        const isAvailable = await checkPropertyAvailability(
-          input.propertyId,
-          input.checkInDate,
-          input.checkOutDate
-        );
-        if (!isAvailable) {
-          throw new TRPCError5({
-            code: "BAD_REQUEST",
-            message:
-              "La propriet\xE0 non \xE8 disponibile per le date selezionate",
-          });
-        }
-        const nights = Math.ceil(
-          (input.checkOutDate.getTime() - input.checkInDate.getTime()) /
-            (1e3 * 60 * 60 * 24)
-        );
-        const totalPrice =
-          Math.round(property.pricePerNight * nights * 100) / 100;
-        const bookingId = await createBooking({
-          ...input,
-          propertyId: input.propertyId,
-          guestId: ctx.user.id,
-          hostId: property.hostId,
-          totalPrice,
-          status: "pending",
-          paymentStatus: "pending",
+    create: protectedProcedure.input(z6.object({
+      propertyId: z6.number(),
+      checkInDate: z6.date(),
+      checkOutDate: z6.date(),
+      numberOfGuests: z6.number(),
+      guestName: z6.string(),
+      guestEmail: z6.string().email(),
+      guestPhone: z6.string().optional(),
+      specialRequests: z6.string().optional()
+    })).mutation(async ({ ctx, input }) => {
+      const property = await getPropertyById(input.propertyId);
+      if (!property) {
+        throw new TRPCError5({ code: "NOT_FOUND", message: "Propriet\xE0 non trovata" });
+      }
+      const isAvailable = await checkPropertyAvailability(
+        input.propertyId,
+        input.checkInDate,
+        input.checkOutDate
+      );
+      if (!isAvailable) {
+        throw new TRPCError5({
+          code: "BAD_REQUEST",
+          message: "La propriet\xE0 non \xE8 disponibile per le date selezionate"
         });
-        await createNotification({
-          userId: property.hostId,
-          type: "booking_request",
-          title: "Nuova richiesta di prenotazione",
-          message: `${input.guestName} ha richiesto una prenotazione per "${property.title}"`,
-          relatedId: bookingId,
-        });
-        return { success: true, bookingId, totalPrice };
-      }),
+      }
+      const nights = Math.ceil((input.checkOutDate.getTime() - input.checkInDate.getTime()) / (1e3 * 60 * 60 * 24));
+      const totalPrice = Math.round(property.pricePerNight * nights * 100) / 100;
+      const bookingId = await createBooking({
+        ...input,
+        propertyId: input.propertyId,
+        guestId: ctx.user.id,
+        hostId: property.hostId,
+        totalPrice,
+        status: "pending",
+        paymentStatus: "pending"
+      });
+      await createNotification({
+        userId: property.hostId,
+        type: "booking_request",
+        title: "Nuova richiesta di prenotazione",
+        message: `${input.guestName} ha richiesto una prenotazione per "${property.title}"`,
+        relatedId: bookingId
+      });
+      return { success: true, bookingId, totalPrice };
+    }),
     // Get booking by ID
-    getById: protectedProcedure
-      .input(z6.object({ id: z6.number() }))
-      .query(async ({ ctx, input }) => {
-        const booking = await getBookingById(input.id);
-        if (!booking) {
-          throw new TRPCError5({
-            code: "NOT_FOUND",
-            message: "Prenotazione non trovata",
-          });
-        }
-        if (
-          booking.guestId !== ctx.user.id &&
-          booking.hostId !== ctx.user.id &&
-          ctx.user.role !== "admin"
-        ) {
-          throw new TRPCError5({
-            code: "FORBIDDEN",
-            message: "Non autorizzato",
-          });
-        }
-        return booking;
-      }),
+    getById: protectedProcedure.input(z6.object({ id: z6.number() })).query(async ({ ctx, input }) => {
+      const booking = await getBookingById(input.id);
+      if (!booking) {
+        throw new TRPCError5({ code: "NOT_FOUND", message: "Prenotazione non trovata" });
+      }
+      if (booking.guestId !== ctx.user.id && booking.hostId !== ctx.user.id && ctx.user.role !== "admin") {
+        throw new TRPCError5({ code: "FORBIDDEN", message: "Non autorizzato" });
+      }
+      return booking;
+    })
   }),
   reviews: router({
     // Public: Get reviews for a property
-    getByProperty: publicProcedure
-      .input(z6.object({ propertyId: z6.number() }))
-      .query(async ({ input }) => {
-        return await getReviewsByProperty(input.propertyId);
-      }),
+    getByProperty: publicProcedure.input(z6.object({ propertyId: z6.number() })).query(async ({ input }) => {
+      return await getReviewsByProperty(input.propertyId);
+    }),
     // Protected: Create review
-    create: protectedProcedure
-      .input(
-        z6.object({
-          bookingId: z6.number(),
-          propertyId: z6.number(),
-          rating: z6.number().min(1).max(5),
-          comment: z6.string().min(10),
-          cleanlinessRating: z6.number().min(1).max(5).optional(),
-          accuracyRating: z6.number().min(1).max(5).optional(),
-          communicationRating: z6.number().min(1).max(5).optional(),
-          locationRating: z6.number().min(1).max(5).optional(),
-          valueRating: z6.number().min(1).max(5).optional(),
-        })
-      )
-      .mutation(async ({ ctx, input }) => {
-        const booking = await getBookingById(input.bookingId);
-        if (!booking || booking.guestId !== ctx.user.id) {
-          throw new TRPCError5({
-            code: "FORBIDDEN",
-            message: "Non autorizzato",
-          });
-        }
-        if (booking.status !== "completed") {
-          throw new TRPCError5({
-            code: "BAD_REQUEST",
-            message: "Puoi recensire solo dopo aver completato il soggiorno",
-          });
-        }
-        const hasReviewed = await hasUserReviewedBooking(
-          input.bookingId,
-          ctx.user.id
-        );
-        if (hasReviewed) {
-          throw new TRPCError5({
-            code: "BAD_REQUEST",
-            message: "Hai gi\xE0 recensito questa prenotazione",
-          });
-        }
-        const reviewId = await createReview({
-          ...input,
-          guestId: ctx.user.id,
+    create: protectedProcedure.input(z6.object({
+      bookingId: z6.number(),
+      propertyId: z6.number(),
+      rating: z6.number().min(1).max(5),
+      comment: z6.string().min(10),
+      cleanlinessRating: z6.number().min(1).max(5).optional(),
+      accuracyRating: z6.number().min(1).max(5).optional(),
+      communicationRating: z6.number().min(1).max(5).optional(),
+      locationRating: z6.number().min(1).max(5).optional(),
+      valueRating: z6.number().min(1).max(5).optional()
+    })).mutation(async ({ ctx, input }) => {
+      const booking = await getBookingById(input.bookingId);
+      if (!booking || booking.guestId !== ctx.user.id) {
+        throw new TRPCError5({ code: "FORBIDDEN", message: "Non autorizzato" });
+      }
+      if (booking.status !== "completed") {
+        throw new TRPCError5({
+          code: "BAD_REQUEST",
+          message: "Puoi recensire solo dopo aver completato il soggiorno"
         });
-        await createNotification({
-          userId: booking.hostId,
-          type: "review_received",
-          title: "Nuova recensione ricevuta",
-          message: `Hai ricevuto una nuova recensione con ${input.rating} stelle`,
-          relatedId: reviewId,
+      }
+      const hasReviewed = await hasUserReviewedBooking(input.bookingId, ctx.user.id);
+      if (hasReviewed) {
+        throw new TRPCError5({
+          code: "BAD_REQUEST",
+          message: "Hai gi\xE0 recensito questa prenotazione"
         });
-        return { success: true, reviewId };
-      }),
+      }
+      const reviewId = await createReview({
+        ...input,
+        guestId: ctx.user.id
+      });
+      await createNotification({
+        userId: booking.hostId,
+        type: "review_received",
+        title: "Nuova recensione ricevuta",
+        message: `Hai ricevuto una nuova recensione con ${input.rating} stelle`,
+        relatedId: reviewId
+      });
+      return { success: true, reviewId };
+    })
   }),
   messages: router({
     // Get conversation messages
-    getConversation: protectedProcedure
-      .input(z6.object({ conversationId: z6.string() }))
-      .query(async ({ ctx, input }) => {
-        const messages2 = await getConversationMessages(input.conversationId);
-        if (messages2.length > 0) {
-          const firstMessage = messages2[0];
-          if (
-            firstMessage.senderId !== ctx.user.id &&
-            firstMessage.receiverId !== ctx.user.id
-          ) {
-            throw new TRPCError5({
-              code: "FORBIDDEN",
-              message: "Non autorizzato",
-            });
-          }
+    getConversation: protectedProcedure.input(z6.object({ conversationId: z6.string() })).query(async ({ ctx, input }) => {
+      const messages2 = await getConversationMessages(input.conversationId);
+      if (messages2.length > 0) {
+        const firstMessage = messages2[0];
+        if (firstMessage.senderId !== ctx.user.id && firstMessage.receiverId !== ctx.user.id) {
+          throw new TRPCError5({ code: "FORBIDDEN", message: "Non autorizzato" });
         }
-        return messages2;
-      }),
+      }
+      return messages2;
+    }),
     // Send message
-    send: protectedProcedure
-      .input(
-        z6.object({
-          propertyId: z6.number(),
-          receiverId: z6.number(),
-          content: z6.string().min(1),
-        })
-      )
-      .mutation(async ({ ctx, input }) => {
-        const property = await getPropertyById(input.propertyId);
-        if (!property) {
-          throw new TRPCError5({
-            code: "NOT_FOUND",
-            message: "Propriet\xE0 non trovata",
-          });
-        }
-        const conversationId = `${input.propertyId}-${Math.min(ctx.user.id, input.receiverId)}-${Math.max(ctx.user.id, input.receiverId)}`;
-        const messageId = await createMessage({
-          conversationId,
-          propertyId: input.propertyId,
-          senderId: ctx.user.id,
-          receiverId: input.receiverId,
-          content: input.content,
-        });
-        await createNotification({
-          userId: input.receiverId,
-          type: "message_received",
-          title: "Nuovo messaggio",
-          message: `Hai ricevuto un nuovo messaggio da ${ctx.user.name || "un utente"}`,
-          relatedId: messageId,
-        });
-        return { success: true, messageId };
-      }),
+    send: protectedProcedure.input(z6.object({
+      propertyId: z6.number(),
+      receiverId: z6.number(),
+      content: z6.string().min(1)
+    })).mutation(async ({ ctx, input }) => {
+      const property = await getPropertyById(input.propertyId);
+      if (!property) {
+        throw new TRPCError5({ code: "NOT_FOUND", message: "Propriet\xE0 non trovata" });
+      }
+      const conversationId = `${input.propertyId}-${Math.min(ctx.user.id, input.receiverId)}-${Math.max(ctx.user.id, input.receiverId)}`;
+      const messageId = await createMessage({
+        conversationId,
+        propertyId: input.propertyId,
+        senderId: ctx.user.id,
+        receiverId: input.receiverId,
+        content: input.content
+      });
+      await createNotification({
+        userId: input.receiverId,
+        type: "message_received",
+        title: "Nuovo messaggio",
+        message: `Hai ricevuto un nuovo messaggio da ${ctx.user.name || "un utente"}`,
+        relatedId: messageId
+      });
+      return { success: true, messageId };
+    }),
     // Mark messages as read
-    markAsRead: protectedProcedure
-      .input(z6.object({ conversationId: z6.string() }))
-      .mutation(async ({ ctx, input }) => {
-        await markMessagesAsRead(input.conversationId, ctx.user.id);
-        return { success: true };
-      }),
+    markAsRead: protectedProcedure.input(z6.object({ conversationId: z6.string() })).mutation(async ({ ctx, input }) => {
+      await markMessagesAsRead(input.conversationId, ctx.user.id);
+      return { success: true };
+    }),
     // Get unread count
     unreadCount: protectedProcedure.query(async ({ ctx }) => {
       return await getUnreadMessageCount(ctx.user.id);
-    }),
+    })
   }),
   notifications: router({
     // Get my notifications
@@ -1936,17 +1586,15 @@ var appRouter = router({
       return await getUserNotifications(ctx.user.id);
     }),
     // Mark notification as read
-    markAsRead: protectedProcedure
-      .input(z6.object({ id: z6.number() }))
-      .mutation(async ({ input }) => {
-        await markNotificationAsRead(input.id);
-        return { success: true };
-      }),
+    markAsRead: protectedProcedure.input(z6.object({ id: z6.number() })).mutation(async ({ input }) => {
+      await markNotificationAsRead(input.id);
+      return { success: true };
+    }),
     // Get unread count
     unreadCount: protectedProcedure.query(async ({ ctx }) => {
       return await getUnreadNotificationCount(ctx.user.id);
-    }),
-  }),
+    })
+  })
 });
 
 // shared/_core/errors.ts
@@ -1957,13 +1605,13 @@ var HttpError = class extends Error {
     this.name = "HttpError";
   }
 };
-var ForbiddenError = msg => new HttpError(403, msg);
+var ForbiddenError = (msg) => new HttpError(403, msg);
 
 // server/_core/sdk.ts
 import axios from "axios";
 import { parse as parseCookieHeader } from "cookie";
 import { SignJWT, jwtVerify } from "jose";
-var isNonEmptyString2 = value => typeof value === "string" && value.length > 0;
+var isNonEmptyString2 = (value) => typeof value === "string" && value.length > 0;
 var EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
 var GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
 var GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfoWithJwt`;
@@ -1986,23 +1634,28 @@ var OAuthService = class {
       clientId: ENV.appId,
       grantType: "authorization_code",
       code,
-      redirectUri: this.decodeState(state),
+      redirectUri: this.decodeState(state)
     };
-    const { data } = await this.client.post(EXCHANGE_TOKEN_PATH, payload);
+    const { data } = await this.client.post(
+      EXCHANGE_TOKEN_PATH,
+      payload
+    );
     return data;
   }
   async getUserInfoByToken(token) {
-    const { data } = await this.client.post(GET_USER_INFO_PATH, {
-      accessToken: token.accessToken,
-    });
+    const { data } = await this.client.post(
+      GET_USER_INFO_PATH,
+      {
+        accessToken: token.accessToken
+      }
+    );
     return data;
   }
 };
-var createOAuthHttpClient = () =>
-  axios.create({
-    baseURL: ENV.oAuthServerUrl,
-    timeout: AXIOS_TIMEOUT_MS,
-  });
+var createOAuthHttpClient = () => axios.create({
+  baseURL: ENV.oAuthServerUrl,
+  timeout: AXIOS_TIMEOUT_MS
+});
 var SDKServer = class {
   client;
   oauthService;
@@ -2013,14 +1666,13 @@ var SDKServer = class {
   deriveLoginMethod(platforms, fallback) {
     if (fallback && fallback.length > 0) return fallback;
     if (!Array.isArray(platforms) || platforms.length === 0) return null;
-    const set = new Set(platforms.filter(p => typeof p === "string"));
+    const set = new Set(
+      platforms.filter((p) => typeof p === "string")
+    );
     if (set.has("REGISTERED_PLATFORM_EMAIL")) return "email";
     if (set.has("REGISTERED_PLATFORM_GOOGLE")) return "google";
     if (set.has("REGISTERED_PLATFORM_APPLE")) return "apple";
-    if (
-      set.has("REGISTERED_PLATFORM_MICROSOFT") ||
-      set.has("REGISTERED_PLATFORM_AZURE")
-    )
+    if (set.has("REGISTERED_PLATFORM_MICROSOFT") || set.has("REGISTERED_PLATFORM_AZURE"))
       return "microsoft";
     if (set.has("REGISTERED_PLATFORM_GITHUB")) return "github";
     const first = Array.from(set)[0];
@@ -2041,7 +1693,7 @@ var SDKServer = class {
    */
   async getUserInfo(accessToken) {
     const data = await this.oauthService.getUserInfoByToken({
-      accessToken,
+      accessToken
     });
     const loginMethod = this.deriveLoginMethod(
       data?.platforms,
@@ -2050,7 +1702,7 @@ var SDKServer = class {
     return {
       ...data,
       platform: loginMethod,
-      loginMethod,
+      loginMethod
     };
   }
   parseCookies(cookieHeader) {
@@ -2074,7 +1726,7 @@ var SDKServer = class {
       {
         openId,
         appId: ENV.appId,
-        name: options.name || "",
+        name: options.name || ""
       },
       options
     );
@@ -2087,11 +1739,8 @@ var SDKServer = class {
     return new SignJWT({
       openId: payload.openId,
       appId: payload.appId,
-      name: payload.name,
-    })
-      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
-      .setExpirationTime(expirationSeconds)
-      .sign(secretKey);
+      name: payload.name
+    }).setProtectedHeader({ alg: "HS256", typ: "JWT" }).setExpirationTime(expirationSeconds).sign(secretKey);
   }
   async verifySession(cookieValue) {
     if (!cookieValue) {
@@ -2101,7 +1750,7 @@ var SDKServer = class {
     try {
       const secretKey = this.getSessionSecret();
       const { payload } = await jwtVerify(cookieValue, secretKey, {
-        algorithms: ["HS256"],
+        algorithms: ["HS256"]
       });
       const { openId, appId, name } = payload;
       if (!isNonEmptyString2(openId) || !isNonEmptyString2(name)) {
@@ -2111,7 +1760,7 @@ var SDKServer = class {
       return {
         openId,
         appId: typeof appId === "string" ? appId : "",
-        name,
+        name
       };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));
@@ -2121,7 +1770,7 @@ var SDKServer = class {
   async getUserInfoWithJwt(jwtToken) {
     const payload = {
       jwtToken,
-      projectId: ENV.appId,
+      projectId: ENV.appId
     };
     const { data } = await this.client.post(
       GET_USER_INFO_WITH_JWT_PATH,
@@ -2134,7 +1783,7 @@ var SDKServer = class {
     return {
       ...data,
       platform: loginMethod,
-      loginMethod,
+      loginMethod
     };
   }
   async authenticateRequest(req) {
@@ -2150,9 +1799,8 @@ var SDKServer = class {
     if (!user) {
       throw ForbiddenError("User not found");
     }
-    upsertUser({ openId: user.openId, lastSignedIn: signedInAt }).catch(
-      () => {}
-    );
+    upsertUser({ openId: user.openId, lastSignedIn: signedInAt }).catch(() => {
+    });
     return user;
   }
 };
@@ -2169,7 +1817,7 @@ async function createContext(opts) {
   return {
     req: opts.req,
     res: opts.res,
-    user,
+    user
   };
 }
 
@@ -2191,28 +1839,32 @@ function getSupabaseAdmin() {
     ENV.supabaseServiceRoleKey ? "service_role" : "anon"
   );
   return createClient(ENV.supabaseUrl, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
+    auth: { autoRefreshToken: false, persistSession: false }
   });
 }
 var oauthRouter = Router();
 oauthRouter.get("/dev/login", async (req, res) => {
+  if (ENV.isProduction) {
+    res.sendStatus(404);
+    return;
+  }
   try {
     const dummyUser = {
       openId: "dev-user-123",
       name: "Developer User",
       email: "dev@example.com",
       loginMethod: "dev",
-      lastSignedIn: /* @__PURE__ */ new Date(),
+      lastSignedIn: /* @__PURE__ */ new Date()
     };
     await upsertUser(dummyUser);
     const sessionToken = await sdk.createSessionToken(dummyUser.openId, {
       name: dummyUser.name,
-      expiresInMs: ONE_YEAR_MS,
+      expiresInMs: ONE_YEAR_MS
     });
     const cookieOptions = getSessionCookieOptions(req);
     res.cookie(COOKIE_NAME, sessionToken, {
       ...cookieOptions,
-      maxAge: ONE_YEAR_MS,
+      maxAge: ONE_YEAR_MS
     });
     res.redirect(302, "/");
   } catch (error) {
@@ -2220,71 +1872,74 @@ oauthRouter.get("/dev/login", async (req, res) => {
     res.status(500).json({ error: "Dev login failed" });
   }
 });
-oauthRouter.post("/auth/supabase-session", async (req, res) => {
-  const { access_token } = req.body ?? {};
-  if (!access_token || typeof access_token !== "string") {
-    res.status(400).json({ error: "access_token is required" });
-    return;
-  }
-  try {
-    const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase.auth.getUser(access_token);
-    if (error || !data.user) {
-      console.error(
-        "[Auth] Invalid Supabase token. Error:",
-        error?.message ?? "no user returned"
-      );
-      console.error("[Auth] supabaseUrl:", ENV.supabaseUrl ? "set" : "MISSING");
-      console.error(
-        "[Auth] serviceRoleKey:",
-        ENV.supabaseServiceRoleKey ? "set" : "MISSING"
-      );
-      console.error("[Auth] anonKey:", ENV.supabaseAnonKey ? "set" : "MISSING");
-      res.status(401).json({ error: error?.message ?? "Invalid token" });
+oauthRouter.post(
+  "/auth/supabase-session",
+  async (req, res) => {
+    const { access_token } = req.body ?? {};
+    if (!access_token || typeof access_token !== "string") {
+      res.status(400).json({ error: "access_token is required" });
       return;
     }
-    const supabaseUser = data.user;
-    const openId = supabaseUser.id;
-    const email = supabaseUser.email ?? null;
-    const name =
-      supabaseUser.user_metadata?.full_name ??
-      supabaseUser.user_metadata?.name ??
-      email?.split("@")[0] ??
-      "User";
-    const loginMethod = supabaseUser.app_metadata?.provider ?? "email";
-    await upsertUser({
-      openId,
-      name,
-      email,
-      loginMethod,
-      lastSignedIn: /* @__PURE__ */ new Date(),
-    });
-    const savedUser = await getUserByOpenId(openId);
-    if (!savedUser) {
-      console.error(
-        "[Auth] User not found in DB after upsert \u2014 database connection may be failing"
-      );
-      res
-        .status(500)
-        .json({ error: "Database error: user could not be created" });
-      return;
+    try {
+      const supabase = getSupabaseAdmin();
+      const { data, error } = await supabase.auth.getUser(access_token);
+      if (error || !data.user) {
+        console.error(
+          "[Auth] Invalid Supabase token. Error:",
+          error?.message ?? "no user returned"
+        );
+        console.error(
+          "[Auth] supabaseUrl:",
+          ENV.supabaseUrl ? "set" : "MISSING"
+        );
+        console.error(
+          "[Auth] serviceRoleKey:",
+          ENV.supabaseServiceRoleKey ? "set" : "MISSING"
+        );
+        console.error(
+          "[Auth] anonKey:",
+          ENV.supabaseAnonKey ? "set" : "MISSING"
+        );
+        res.status(401).json({ error: error?.message ?? "Invalid token" });
+        return;
+      }
+      const supabaseUser = data.user;
+      const openId = supabaseUser.id;
+      const email = supabaseUser.email ?? null;
+      const name = supabaseUser.user_metadata?.full_name ?? supabaseUser.user_metadata?.name ?? email?.split("@")[0] ?? "User";
+      const loginMethod = supabaseUser.app_metadata?.provider ?? "email";
+      await upsertUser({
+        openId,
+        name,
+        email,
+        loginMethod,
+        lastSignedIn: /* @__PURE__ */ new Date()
+      });
+      const savedUser = await getUserByOpenId(openId);
+      if (!savedUser) {
+        console.error(
+          "[Auth] User not found in DB after upsert \u2014 database connection may be failing"
+        );
+        res.status(500).json({ error: "Database error: user could not be created" });
+        return;
+      }
+      const sessionToken = await sdk.createSessionToken(openId, {
+        name,
+        expiresInMs: ONE_YEAR_MS
+      });
+      const cookieOptions = getSessionCookieOptions(req);
+      res.cookie(COOKIE_NAME, sessionToken, {
+        ...cookieOptions,
+        maxAge: ONE_YEAR_MS
+      });
+      res.json({ success: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("[Auth] Supabase session error:", message, error);
+      res.status(500).json({ error: `Session creation failed: ${message}` });
     }
-    const sessionToken = await sdk.createSessionToken(openId, {
-      name,
-      expiresInMs: ONE_YEAR_MS,
-    });
-    const cookieOptions = getSessionCookieOptions(req);
-    res.cookie(COOKIE_NAME, sessionToken, {
-      ...cookieOptions,
-      maxAge: ONE_YEAR_MS,
-    });
-    res.json({ success: true });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("[Auth] Supabase session error:", message, error);
-    res.status(500).json({ error: `Session creation failed: ${message}` });
   }
-});
+);
 
 // api/_handler.ts
 var app = express();
@@ -2296,14 +1951,14 @@ app.use(
   "/api/trpc",
   createExpressMiddleware({
     router: appRouter,
-    createContext,
+    createContext
   })
 );
 app.use(
   "/trpc",
   createExpressMiddleware({
     router: appRouter,
-    createContext,
+    createContext
   })
 );
 async function handler(req, res) {
@@ -2315,4 +1970,6 @@ async function handler(req, res) {
     res.status(500).json({ error: "API bootstrap failed", message });
   }
 }
-export { handler as default };
+export {
+  handler as default
+};
